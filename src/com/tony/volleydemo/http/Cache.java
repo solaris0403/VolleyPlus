@@ -47,7 +47,7 @@ public interface Cache {
 		// 软TTL此记录。
 		public long softTtl;
 		// 从服务器接收不可改变的响应头;必须为非空。
-		public Map<String, String> responseHeader = Collections.emptyMap();
+		public Map<String, String> responseHeaders = Collections.emptyMap();
 
 		// 是否過期
 		public boolean isExpired() {
