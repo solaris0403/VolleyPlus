@@ -1,4 +1,4 @@
-package com.tony.volleydemo.http;
+package com.tony.volleydemo.http.core;
 
 import android.content.Intent;
 

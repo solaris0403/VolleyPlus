@@ -1,4 +1,4 @@
-package com.tony.volleydemo.http;
+package com.tony.volleydemo.http.core;
 /**
  * Retry policy for a request.
  * @author Tony E-mail:solaris0403@gmail.com

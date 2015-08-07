@@ -1,4 +1,4 @@
-package com.tony.volleydemo.http;
+package com.tony.volleydemo.http.core;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -10,7 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 
-import com.tony.volleydemo.http.VolleyLog.MarkerLog;
+import com.tony.volleydemo.http.core.VolleyLog.MarkerLog;
 
 /**
  * 所有请求的抽象类 因为有多种请求 所以使用泛型

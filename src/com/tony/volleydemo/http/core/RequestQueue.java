@@ -1,4 +1,4 @@
-package com.tony.volleydemo.http;
+package com.tony.volleydemo.http.core;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -80,21 +80,6 @@ public class RequestQueue {
 		mNetwork = network;
 		mDispatchers = new NetworkDispatcher[threadPoolSize];
 		mDelivery = delivery;
-	}
-
-	/**
-	 * Creates the worker pool. Processing will not begin until {@link #start()}
-	 * is called.
-	 *
-	 * @param cache
-	 *            A Cache to use for persisting responses to disk
-	 * @param network
-	 *            A Network interface for performing HTTP requests
-	 * @param threadPoolSize
-	 *            Number of network dispatcher threads to create
-	 */
-	public RequestQueue(Cache cache, Network network, int threadPoolSize) {
-		this(cache, network, threadPoolSize, new ExecutorDelivery(new Handler(Looper.getMainLooper())));
 	}
 
 	/**

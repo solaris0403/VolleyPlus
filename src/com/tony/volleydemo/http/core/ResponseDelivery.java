@@ -1,4 +1,4 @@
-package com.tony.volleydemo.http;
+package com.tony.volleydemo.http.core;
 
 /**
  * @author Tony E-mail:solaris0403@gmail.com
