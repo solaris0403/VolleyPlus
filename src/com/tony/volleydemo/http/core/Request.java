@@ -5,26 +5,30 @@ import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.Map;
 
+import android.net.TrafficStats;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 
 import com.tony.volleydemo.http.core.VolleyLog.MarkerLog;
+import com.tony.volleydemo.http.utils.InternalUtils;
 
 /**
- * 所有请求的抽象类 因为有多种请求 所以使用泛型
+ * Base class for all network requests.
  * 
- * @author Tony E-mail:solaris0403@gmail.com
- * @version Create Data：Jul 27, 2015 2:50:58 PM
+ * @param <T>
+ *            The type of parsed response this request expects.
  */
 public abstract class Request<T> implements Comparable<Request<T>> {
 
-	// 默认的参数编码
+	/**
+	 * Default encoding for POST or PUT parameters. See
+	 * {@link #getParamsEncoding()}.
+	 */
 	private static final String DEFAULT_PARAMS_ENCODING = "UTF-8";
 
-	// 支持的请求方法
-	// TODO why to use interface
+	/** Supported request methods. */
 	public interface Method {
 		int DEPRECATED_GET_OR_POST = -1;
 		int GET = 0;
@@ -37,57 +41,83 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		int PATCH = 7;
 	}
 
-	// 事件日志跟踪该请求的生命周期;调试
+	/** An event log tracing the lifetime of this request; for debugging. */
 	private final MarkerLog mEventLog = MarkerLog.ENABLED ? new MarkerLog() : null;
 
-	// 請求的方法
+	/** Request method of this request. */
 	private int mMethod;
 
-	// 請求url
+	/** URL of this request. */
 	private String mUrl;
 
-	// 一個請求傳遞的TAG
+	/** The redirect url to use for 3xx http responses */
+	private String mRedirectUrl;
+
+	/** The unique identifier of the request */
+	private String mIdentifier;
+
+	/** Default tag for {@link TrafficStats}. */
 	private int mDefaultTrafficStatsTag;
 
 	/** Listener interface for errors. */
 	private final Response.ErrorListener mErrorListener;
 
-	// 一個記錄該請求的順序號，FIFO
+	/** Sequence number of this request, used to enforce FIFO ordering. */
 	private Integer mSequence;
 
-	/** 该请求相关联的请求队列. */
+	/** The request queue this request is associated with. */
 	private RequestQueue mRequestQueue;
 
-	// 該請求結果是否需要緩存 默認需要
+	/** Whether or not responses to this request should be cached. */
 	private boolean mShouldCache = true;
 
-	// 該請求是否被取消 默認沒有
+	/** Whether or not this request has been canceled. */
 	private boolean mCanceled = false;
 
-	// 是否有响应已交付该请求呢。
+	/** Whether or not a response has been delivered for this request yet. */
 	private boolean mResponceDelivered = false;
 
-	// 重试这一请求。
+	/** The retry policy for this request. */
 	private RetryPolicy mRetryPolicy;
 
 	// 当一个请求可以从高速缓存检索而必须从刷新网络时，高速缓存条目将被存储在这里，
 	// 以便在发生一个“Not Modified”的响应，我们可以肯定它并没有被驱逐出缓存。
+	/**
+	 * When a request can be retrieved from cache but must be refreshed from the
+	 * network, the cache entry will be stored here so that in the event of a
+	 * "Not Modified" response, we can be sure it hasn't been evicted from
+	 * cache.
+	 */
 	private Cache.Entry mCacheEntry = null;
 
 	// 一个不透明的令牌标记这个请求;用于批量取消
+	/** An opaque token tagging this request; used for bulk cancellation. */
 	private Object mTag;
 
-	// 创建具有给定的URL和错误监听一个新的请求。注意
-	// 未提供此处作为输送响应的正常响应听者
-	// 由子，谁拥有更好的主意如何提供一个提供
-	// 已解析的响应。
+	/**
+	 * Creates a new request with the given URL and error listener. Note that
+	 * the normal response listener is not provided here as delivery of
+	 * responses is provided by subclasses, who have a better idea of how to
+	 * deliver an already-parsed response.
+	 *
+	 * @deprecated Use
+	 *             {@link #Request(int, String, com.android.volley.Response.ErrorListener)}
+	 *             .
+	 */
 	@Deprecated
 	public Request(String url, Response.ErrorListener listener) {
 		this(Method.DEPRECATED_GET_OR_POST, url, listener);
 	}
 
-	// 方法調用
+	/**
+	 * Creates a new request with the given method (one of the values from
+	 * {@link Method}), URL, and error listener. Note that the normal response
+	 * listener is not provided here as delivery of responses is provided by
+	 * subclasses, who have a better idea of how to deliver an already-parsed
+	 * response.
+	 */
 	public Request(int method, String url, Response.ErrorListener listener) {
+		mIdentifier = createIdentifier(method, url);
 		mMethod = method;
 		mUrl = url;
 		mErrorListener = listener;
@@ -96,19 +126,30 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		mDefaultTrafficStatsTag = findDefaultTrafficStatsTag(url);
 	}
 
-	// 返回當前請求的方法
+	/**
+	 * Return the method for this request. Can be one of the values in
+	 * {@link Method}.
+	 */
 	public int getMethod() {
 		return mMethod;
 	}
 
-	// Set a tag on this request. Can be used to cancel all requests with this
-	// tag by {@link RequestQueue#cancelAll(Object)}.
+	/**
+	 * Set a tag on this request. Can be used to cancel all requests with this
+	 * tag by {@link RequestQueue#cancelAll(Object)}.
+	 *
+	 * @return This Request object to allow for chaining.
+	 */
 	public Request<?> setTag(Object tag) {
 		mTag = tag;
 		return this;
 	}
 
-	// Returns this request's tag.
+	/**
+	 * Returns this request's tag.
+	 * 
+	 * @see Request#setTag(Object)
+	 */
 	public Object getTag() {
 		return mTag;
 	}
@@ -120,12 +161,16 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		return mErrorListener;
 	}
 
-	// A tag for use with {@link TrafficStats#setThreadStatsTag(int)}
+	/**
+	 * @return A tag for use with {@link TrafficStats#setThreadStatsTag(int)}
+	 */
 	public int getTrafficStatsTag() {
 		return mDefaultTrafficStatsTag;
 	}
 
-	// The hashcode of the URL's host component, or 0 if there is none.
+	/**
+	 * @return The hashcode of the URL's host component, or 0 if there is none.
+	 */
 	public static int findDefaultTrafficStatsTag(String url) {
 		if (!TextUtils.isEmpty(url)) {
 			Uri uri = Uri.parse(url);
@@ -149,7 +194,9 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		return this;
 	}
 
-	// Adds an event to this request's event log; for debugging.
+	/**
+	 * Adds an event to this request's event log; for debugging.
+	 */
 	public void addMarker(String tag) {
 		if (MarkerLog.ENABLED) {
 			mEventLog.add(tag, Thread.currentThread().getId());
@@ -199,13 +246,19 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		return this;
 	}
 
-	// Sets the sequence number of this request
+	/**
+	 * Sets the sequence number of this request. Used by {@link RequestQueue}.
+	 *
+	 * @return This Request object to allow for chaining.
+	 */
 	public final Request<?> setSequence(int sequence) {
 		mSequence = sequence;
 		return this;
 	}
 
-	// Returns the sequence number of this request.
+	/**
+	 * Returns the sequence number of this request.
+	 */
 	public int getSequence() {
 		if (mSequence == null) {
 			throw new IllegalStateException("getSequence called before setSequence");
@@ -213,14 +266,39 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		return mSequence;
 	}
 
-	// Return the URL of this request
+	/**
+	 * Returns the URL of this request.
+	 */
 	public String getUrl() {
+		return (mRedirectUrl != null) ? mRedirectUrl : mUrl;
+	}
+
+	/**
+	 * Returns the URL of the request before any redirects have occurred.
+	 */
+	public String getOriginUrl() {
 		return mUrl;
 	}
 
-	// return this cache key, default this is URL
+	/**
+	 * Returns the identifier of the request.
+	 */
+	public String getIdentifier() {
+		return mIdentifier;
+	}
+
+	/**
+	 * Sets the redirect url to handle 3xx http responses.
+	 */
+	public void setRedirectUrl(String redirectUrl) {
+		mRedirectUrl = redirectUrl;
+	}
+
+	/**
+	 * Returns the cache key for this request. By default, this is the URL.
+	 */
 	public String getCacheKey() {
-		return getUrl();
+		return mMethod + ":" + mUrl;
 	}
 
 	/**
@@ -241,12 +319,16 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		return mCacheEntry;
 	}
 
-	// Mark this request as canceled. No callback will be delivered.
+	/**
+	 * Mark this request as canceled. No callback will be delivered.
+	 */
 	public void cancel() {
 		mCanceled = true;
 	}
 
-	// Returns true if this request has been canceled.
+	/**
+	 * Returns true if this request has been canceled.
+	 */
 	public boolean isCanceled() {
 		return mCanceled;
 	}
@@ -321,12 +403,12 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	 */
 	@Deprecated
 	public byte[] getPostBody() throws AuthFailureError {
-		// Note: For compatibility with legacy clients of volley,
-		// thisimplementation must remain
-		// here instead of simply calling the getBody() function because
-		// thisfunction must
-		// call getPostParams() and getPostParamsEncoding() since legacy
-		// clientswould have
+		// Note: For compatibility with legacy clients of
+		// volley,thisimplementation must remain
+		// here instead of simply calling the getBody() function
+		// becausethisfunction must
+		// call getPostParams() and getPostParamsEncoding() since
+		// legacyclientswould have
 		// overridden these two member functions for POST requests.
 		Map<String, String> postParams = getPostParams();
 		if (postParams != null && postParams.size() > 0) {
@@ -368,7 +450,9 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		return DEFAULT_PARAMS_ENCODING;
 	}
 
-	// Returns the content type of the POST or PUT body.
+	/**
+	 * Returns the content type of the POST or PUT body.
+	 */
 	public String getBodyContentType() {
 		return "application/x-www-form-urlencoded; charset=" + getParamsEncoding();
 	}
@@ -412,25 +496,35 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		}
 	}
 
-	// Set whether or not responses to this request should be cached.
+	/**
+	 * Set whether or not responses to this request should be cached.
+	 *
+	 * @return This Request object to allow for chaining.
+	 */
 	public final Request<?> setShouldCache(boolean shouldCache) {
 		mShouldCache = shouldCache;
 		return this;
 	}
 
-	// Returns true if responses to this request should be cached.
+	/**
+	 * Returns true if responses to this request should be cached.
+	 */
 	public boolean shouldCache() {
 		return mShouldCache;
 	}
 
-	// Priority values. Requests will be processed from higher priorities to
-	// lower priorities, in FIFO order.
+	/**
+	 * Priority values. Requests will be processed from higher priorities to
+	 * lower priorities, in FIFO order.
+	 */
 	public enum Priority {
 		LOW, NORMAL, HIGH, IMMEDIATE
 	}
 
-	// Returns the {@link Priority} of this request; {@link Priority#NORMAL} by
-	// default.
+	/**
+	 * Returns the {@link Priority} of this request; {@link Priority#NORMAL} by
+	 * default.
+	 */
 	public Priority getPriority() {
 		return Priority.NORMAL;
 	}
@@ -533,5 +627,20 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	public String toString() {
 		String trafficStatsTag = "0x" + Integer.toHexString(getTrafficStatsTag());
 		return (mCanceled ? "[X] " : "[ ] ") + getUrl() + " " + trafficStatsTag + " " + getPriority() + " " + mSequence;
+	}
+
+	private static long sCounter;
+
+	/**
+	 * sha1(Request:method:url:timestamp:counter)
+	 * 
+	 * @param method
+	 *            http method
+	 * @param url
+	 *            http request url
+	 * @return sha1 hash string
+	 */
+	private static String createIdentifier(final int method, final String url) {
+		return InternalUtils.sha1Hash("Request:" + method + ":" + url + ":" + System.currentTimeMillis() + ":" + (sCounter++));
 	}
 }

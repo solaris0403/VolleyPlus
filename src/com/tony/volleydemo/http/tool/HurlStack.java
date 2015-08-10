@@ -7,6 +7,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -217,6 +218,9 @@ public class HurlStack implements HttpStack {
 	 * Create an {@link HttpURLConnection} for the specified {@code url}.
 	 */
 	protected HttpURLConnection createConnection(URL url) throws IOException {
+		if (url.toString().toLowerCase(Locale.CHINA).startsWith("https")) {
+			HTTPSTrustManager.allowAllSSL();
+		}
 		return (HttpURLConnection) url.openConnection();
 	}
 
