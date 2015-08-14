@@ -4,8 +4,8 @@ package com.tony.volleydemo.http.core;
  * @author Tony E-mail:solaris0403@gmail.com
  * @version Create Data：Jul 29, 2015 6:19:18 PM
  */
+@SuppressWarnings("serial")
 public class VolleyError extends Exception {
-	private static final long serialVersionUID = 1L;
 	public final NetworkResponse networkResponse;
 	private long networkTimeMs;
 

@@ -8,8 +8,8 @@ import com.tony.volleydemo.http.core.RequestQueue;
  * @author Tony E-mail:solaris0403@gmail.com
  * @version Create Data：Aug 10, 2015 9:24:06 AM
  */
-public class Hera {
-	private Hera() {
+public class VolleyPlus {
+	private VolleyPlus() {
 	}
 	private static RequestQueue mRequestQueue;
 
