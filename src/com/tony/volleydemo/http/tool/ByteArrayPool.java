@@ -1,10 +1,22 @@
+/*
+ * Copyright (C) 2012 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.tony.volleydemo.http.tool;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * ByteArrayPool is a source and repository of <code>byte[]</code> objects. Its
@@ -46,6 +58,7 @@ public class ByteArrayPool {
 
 	/** The total size of the buffers in the pool */
 	private int mCurrentSize = 0;
+
 	/**
 	 * The maximum aggregate size of the buffers in the pool. Old buffers are
 	 * discarded to stay under this limit.
@@ -60,12 +73,30 @@ public class ByteArrayPool {
 		}
 	};
 
-	/**
-	 * @param sizeLimit
-	 *            the maximum size of the pool, in bytes
-	 */
-	public ByteArrayPool(int sizeLimit) {
-		mSizeLimit = sizeLimit;
+//	/**
+//	 * @param sizeLimit
+//	 *            the maximum size of the pool, in bytes
+//	 */
+//	public ByteArrayPool(int sizeLimit) {
+//		mSizeLimit = sizeLimit;
+//	}
+    /**
+     * @param sizeLimit the maximum size of the pool, in bytes
+     */
+    private ByteArrayPool(int sizeLimit) {
+        mSizeLimit = sizeLimit;
+    }
+    /** Singleton for this class. */
+	private static ByteArrayPool mPool;
+
+	/** Get the singleton instance. */
+	public static ByteArrayPool get() {
+		return mPool;
+	}
+
+	/** Init and persisting the singleton instance. */
+	public static void init(int poolSize) {
+		mPool = new ByteArrayPool(poolSize);
 	}
 
 	/**

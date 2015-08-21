@@ -1,4 +1,20 @@
-package com.tony.volleydemo.http.tool;
+/*
+ * Copyright (C) 2011 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.tony.volleydemo.http.stack;
 
 import java.io.IOException;
 import java.net.URI;
@@ -23,6 +39,9 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.HTTP;
+
+import android.net.http.AndroidHttpClient;
 
 import com.tony.volleydemo.http.core.AuthFailureError;
 import com.tony.volleydemo.http.core.Request;
@@ -30,13 +49,16 @@ import com.tony.volleydemo.http.core.Request.Method;
 
 /**
  * An HttpStack that performs request over an {@link HttpClient}.
- * 
- * @author Tony E-mail:solaris0403@gmail.com
- * @version Create Data：Aug 7, 2015 2:34:16 PM
  */
 public class HttpClientStack implements HttpStack {
-	protected final HttpClient mClient;
+
 	private final static String HEADER_CONTENT_TYPE = "Content-Type";
+
+	protected final HttpClient mClient;
+
+	public HttpClientStack(String userAgent) {
+		mClient = AndroidHttpClient.newInstance(userAgent);
+	}
 
 	public HttpClientStack(HttpClient client) {
 		mClient = client;
@@ -58,11 +80,10 @@ public class HttpClientStack implements HttpStack {
 	}
 
 	@Override
-	public HttpResponse performRequest(Request<?> request, Map<String, String> additionalHeaders) throws IOException, AuthFailureError {
+	public HttpResponse performRequest(Request<?> request,Map<String, String> additionalHeaders) throws IOException, AuthFailureError {
 		HttpUriRequest httpRequest = createHttpRequest(request, additionalHeaders);
 		addHeaders(httpRequest, additionalHeaders);
 		addHeaders(httpRequest, request.getHeaders());
-		onPrepareRequest(httpRequest);
 		HttpParams httpParams = httpRequest.getParams();
 		int timeoutMs = request.getTimeoutMs();
 		// TODO: Reevaluate this connection timeout based on more wide-scale
@@ -75,40 +96,37 @@ public class HttpClientStack implements HttpStack {
 	/**
 	 * Creates the appropriate subclass of HttpUriRequest for passed in request.
 	 */
-	@SuppressWarnings("deprecation")
-	/* protected */static HttpUriRequest createHttpRequest(Request<?> request, Map<String, String> additionalHeaders) throws AuthFailureError {
+	private static HttpUriRequest createHttpRequest(Request<?> request, Map<String, String> additionalHeaders) throws AuthFailureError {
 		switch (request.getMethod()) {
-		case Method.DEPRECATED_GET_OR_POST: {
+		case Method.DEPRECATED_GET_OR_POST:
 			// This is the deprecated way that needs to be handled for backwards
 			// compatibility.
 			// If the request's post body is null, then the assumption is that
 			// the request is
 			// GET. Otherwise, it is assumed that the request is a POST.
-			byte[] postBody = request.getPostBody();
+			byte[] postBody = request.getBody();
 			if (postBody != null) {
 				HttpPost postRequest = new HttpPost(request.getUrl());
-				postRequest.addHeader(HEADER_CONTENT_TYPE, request.getPostBodyContentType());
-				HttpEntity entity;
-				entity = new ByteArrayEntity(postBody);
+				postRequest.addHeader(HEADER_CONTENT_TYPE, request.getBodyContentType());
+				HttpEntity entity = new ByteArrayEntity(postBody);
 				postRequest.setEntity(entity);
 				return postRequest;
 			} else {
 				return new HttpGet(request.getUrl());
 			}
-		}
 		case Method.GET:
 			return new HttpGet(request.getUrl());
 		case Method.DELETE:
 			return new HttpDelete(request.getUrl());
 		case Method.POST: {
 			HttpPost postRequest = new HttpPost(request.getUrl());
-			postRequest.addHeader(HEADER_CONTENT_TYPE, request.getBodyContentType());
+			postRequest.addHeader(HTTP.CONTENT_TYPE, request.getBodyContentType());
 			setEntityIfNonEmptyBody(postRequest, request);
 			return postRequest;
 		}
 		case Method.PUT: {
 			HttpPut putRequest = new HttpPut(request.getUrl());
-			putRequest.addHeader(HEADER_CONTENT_TYPE, request.getBodyContentType());
+			putRequest.addHeader(HTTP.CONTENT_TYPE, request.getBodyContentType());
 			setEntityIfNonEmptyBody(putRequest, request);
 			return putRequest;
 		}
@@ -120,7 +138,7 @@ public class HttpClientStack implements HttpStack {
 			return new HttpTrace(request.getUrl());
 		case Method.PATCH: {
 			HttpPatch patchRequest = new HttpPatch(request.getUrl());
-			patchRequest.addHeader(HEADER_CONTENT_TYPE, request.getBodyContentType());
+			patchRequest.addHeader(HTTP.CONTENT_TYPE, request.getBodyContentType());
 			setEntityIfNonEmptyBody(patchRequest, request);
 			return patchRequest;
 		}
@@ -145,7 +163,7 @@ public class HttpClientStack implements HttpStack {
 	 * </p>
 	 */
 	protected void onPrepareRequest(HttpUriRequest request) throws IOException {
-		// Nothing.
+		request.addHeader("Accept-Encoding", "gzip");
 	}
 
 	/**
@@ -177,6 +195,5 @@ public class HttpClientStack implements HttpStack {
 		public String getMethod() {
 			return METHOD_NAME;
 		}
-
 	}
 }

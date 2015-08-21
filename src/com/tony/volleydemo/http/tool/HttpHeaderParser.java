@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2011 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.tony.volleydemo.http.tool;
 
 import java.util.Map;
@@ -6,15 +22,15 @@ import org.apache.http.impl.cookie.DateParseException;
 import org.apache.http.impl.cookie.DateUtils;
 import org.apache.http.protocol.HTTP;
 
-import com.tony.volleydemo.http.core.Cache;
+import com.tony.volleydemo.http.cache.Cache;
 import com.tony.volleydemo.http.core.NetworkResponse;
 
 /**
- * @author Tony E-mail:solaris0403@gmail.com
- * @version Create Data：Aug 7, 2015 3:37:08 PM
+ * Utility methods for parsing HTTP headers.
  */
 public class HttpHeaderParser {
-	/**
+
+    /**
      * Extracts a {@link Cache.Entry} from a {@link NetworkResponse}.
      *
      * @param response The network response to parse headers from
@@ -95,14 +111,15 @@ public class HttpHeaderParser {
         Cache.Entry entry = new Cache.Entry();
         entry.data = response.data;
         entry.etag = serverEtag;
-        entry.softTtl = softExpire;
-        entry.ttl = finalExpire;
+//        entry.softTtl = softExpire;
+//        entry.ttl = finalExpire;
         entry.serverDate = serverDate;
         entry.lastModified = lastModified;
         entry.responseHeaders = headers;
 
         return entry;
     }
+
     /**
      * Parse date in RFC1123 format, and return its value as epoch
      */
@@ -115,6 +132,7 @@ public class HttpHeaderParser {
             return 0;
         }
     }
+
     /**
      * Retrieve a charset from headers
      *

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2011 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.tony.volleydemo.http.core;
 
 import java.util.ArrayList;
@@ -14,52 +30,75 @@ import java.util.concurrent.atomic.AtomicInteger;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.tony.volleydemo.http.cache.Cache;
+import com.tony.volleydemo.http.cache.DiskCache;
+
 /**
- * 请求调度队列调度的线程池。 调用将排队给定的请求调度，无论从缓存或网络上的一个工作线程解析，然后输送在主线程解析后的响应。
- * 
- * @author Tony E-mail:solaris0403@gmail.com
- * @version Create Data：Aug 4, 2015 11:56:38 AM
+ * A request dispatch queue with a thread pool of dispatchers.
+ *
+ * Calling {@link #add(Request)} will enqueue the given Request for dispatch,
+ * resolving from either cache or network on a worker thread, and then
+ * delivering a parsed response on the main thread.
  */
+@SuppressWarnings("rawtypes")
 public class RequestQueue {
-	// Callback interface for completed requests.
+
+	/** Callback interface for completed requests. */
 	public static interface RequestFinishedListener<T> {
-		// Called when a request has finished processing.
+		/** Called when a request has finished processing. */
 		public void onRequestFinished(Request<T> request);
 	}
 
-	// 用于生成单调递增的序列号的请求。
-	 private AtomicInteger mSequenceGenerator = new AtomicInteger();
+	/** Number of network request dispatcher threads to start. */
+	public static final int DEFAULT_NETWORK_THREAD_POOL_SIZE = 4;
 
-	// 对于已经在執行了重复的要求请求临时区域。
-	private final Map<String, Queue<Request<?>>> mWaitingRequests = new HashMap<String, Queue<Request<?>>>();
+	/**
+	 * Used for generating monotonically-increasing sequence numbers for
+	 * requests.
+	 */
+	private AtomicInteger mSequenceGenerator = new AtomicInteger();
 
-	// 目前正由该请求队列处理的集合中的所有请求。请求将在这套如果在等待队列中的任何或正在被任何调度处理。
-	private final Set<Request<?>> mCurrentRequests = new HashSet<Request<?>>();
+	/**
+	 * Staging area for requests that already have a duplicate request in
+	 * flight.
+	 *
+	 * <ul>
+	 * <li>containsKey(cacheKey) indicates that there is a request in flight for
+	 * the given cache key.</li>
+	 * <li>get(cacheKey) returns waiting requests for the given cache key. The
+	 * in flight request is <em>not</em> contained in that list. Is null if no
+	 * requests are staged.</li>
+	 * </ul>
+	 */
+	private final Map<String, Queue<Request>> mWaitingRequests = new HashMap<String, Queue<Request>>();
 
-	// 缓存队列分流.两个基于优先级的 Request 队列
-	private final PriorityBlockingQueue<Request<?>> mCacheQueue = new PriorityBlockingQueue<Request<?>>();
+	/**
+	 * The set of all requests currently being processed by this RequestQueue. A
+	 * Request will be in this set if it is waiting in any queue or currently
+	 * being processed by any dispatcher.
+	 */
+	private final Set<Request> mCurrentRequests = new HashSet<Request>();
 
-	// 请求的队列被实际外出到网络。
-	private final PriorityBlockingQueue<Request<?>> mNetworkQueue = new PriorityBlockingQueue<Request<?>>();
+	/** The cache triage queue. */
+	private final PriorityBlockingQueue<Request> mCacheQueue = new PriorityBlockingQueue<Request>();
 
-	// Number of network request dispatcher threads to start.
-	private static final int DEFAULT_NETWORK_THREAD_POOL_SIZE = 4;
+	/** The queue of requests that are actually going out to the network. */
+	private final PriorityBlockingQueue<Request> mNetworkQueue = new PriorityBlockingQueue<Request>();
 
-	// 高速缓存接口，用于检索和存储的响应。
-	private final Cache mCache;
+	/** Disk cache for retrieving and storing responses. */
+	private final DiskCache mCache;
 
 	/** Network interface for performing requests. */
-	 private final Network mNetwork;
+	private final Network mNetwork;
 
-	/** 响应传递机制. */
-	 private final ResponseDelivery mDelivery;
+	/** Request delivery mechanism. */
+	private final Delivery mDelivery;
 
 	/** The network dispatchers. */
-	 private NetworkDispatcher[] mDispatchers;
+	private NetworkDispatcher[] mDispatchers;
 
 	/** The cache dispatcher. */
-	 private CacheDispatcher mCacheDispatcher;
-
+	private CacheDispatcher mCacheDispatcher;
 	private List<RequestFinishedListener> mFinishedListeners = new ArrayList<RequestFinishedListener>();
 
 	/**
@@ -75,11 +114,12 @@ public class RequestQueue {
 	 * @param delivery
 	 *            A ResponseDelivery interface for posting responses and errors
 	 */
-	public RequestQueue(Cache cache, Network network, int threadPoolSize, ResponseDelivery delivery) {
+	public RequestQueue(DiskCache cache, Network network, int threadPoolSize, Delivery delivery) {
 		mCache = cache;
 		mNetwork = network;
-		mDispatchers = new NetworkDispatcher[threadPoolSize];
 		mDelivery = delivery;
+		mNetwork.setDelivery(delivery);
+		mDispatchers = new NetworkDispatcher[threadPoolSize];
 	}
 
 	/**
@@ -93,7 +133,7 @@ public class RequestQueue {
 	 * @param threadPoolSize
 	 *            Number of network dispatcher threads to create
 	 */
-	public RequestQueue(Cache cache, Network network, int threadPoolSize) {
+	public RequestQueue(DiskCache cache, Network network, int threadPoolSize) {
 		this(cache, network, threadPoolSize, new ExecutorDelivery(new Handler(Looper.getMainLooper())));
 	}
 
@@ -106,16 +146,30 @@ public class RequestQueue {
 	 * @param network
 	 *            A Network interface for performing HTTP requests
 	 */
-	public RequestQueue(Cache cache, Network network) {
+	public RequestQueue(DiskCache cache, Network network) {
 		this(cache, network, DEFAULT_NETWORK_THREAD_POOL_SIZE);
 	}
 
-	// Starts the dispatchers in this queue.
+	/**
+	 * Creates the worker pool. Processing will not begin until {@link #start()}
+	 * is called.
+	 *
+	 * @param network
+	 *            A Network interface for performing HTTP requests
+	 */
+	public RequestQueue(Network network) {
+		this(null, network, DEFAULT_NETWORK_THREAD_POOL_SIZE);
+	}
+
+	/**
+	 * Starts the dispatchers in this queue.
+	 */
 	public void start() {
-		stop();// Make sure any currently running dispatchers are stopped.
+		stop(); // Make sure any currently running dispatchers are stopped.
 		// Create the cache dispatcher and start it.
 		mCacheDispatcher = new CacheDispatcher(mCacheQueue, mNetworkQueue, mCache, mDelivery);
 		mCacheDispatcher.start();
+
 		// Create network dispatchers (and corresponding threads) up to the pool
 		// size.
 		for (int i = 0; i < mDispatchers.length; i++) {
@@ -132,9 +186,9 @@ public class RequestQueue {
 		if (mCacheDispatcher != null) {
 			mCacheDispatcher.quit();
 		}
-		for (int i = 0; i < mDispatchers.length; i++) {
-			if (mDispatchers[i] != null) {
-				mDispatchers[i].quit();
+		for (NetworkDispatcher mDispatcher : mDispatchers) {
+			if (mDispatcher != null) {
+				mDispatcher.quit();
 			}
 		}
 	}
@@ -151,6 +205,13 @@ public class RequestQueue {
 	 */
 	public Cache getCache() {
 		return mCache;
+	}
+
+	/**
+	 * Gets the thread pool size.
+	 */
+	public int getThreadPoolSize() {
+		return mDispatchers.length;
 	}
 
 	/**
@@ -200,7 +261,7 @@ public class RequestQueue {
 	 *            The request to service
 	 * @return The passed-in request
 	 */
-	public <T> Request<T> add(Request<T> request) {
+	public Request add(Request request) {
 		// Tag the request as belonging to this queue and add it to the set of
 		// current requests.
 		request.setRequestQueue(this);
@@ -212,9 +273,10 @@ public class RequestQueue {
 		request.setSequence(getSequenceNumber());
 		request.addMarker("add-to-queue");
 
-		// If the request is uncacheable, skip the cache queue and go straight
-		// to the network.
-		if (!request.shouldCache()) {
+		// If the request is uncacheable or forceUpdate, skip the cache queue
+		// and go straight to the network.
+		if (request.isForceUpdate() || !request.shouldCache()) {
+			mDelivery.postNetworking(request);
 			mNetworkQueue.add(request);
 			return request;
 		}
@@ -225,9 +287,9 @@ public class RequestQueue {
 			String cacheKey = request.getCacheKey();
 			if (mWaitingRequests.containsKey(cacheKey)) {
 				// There is already a request in flight. Queue up.
-				Queue<Request<?>> stagedRequests = mWaitingRequests.get(cacheKey);
+				Queue<Request> stagedRequests = mWaitingRequests.get(cacheKey);
 				if (stagedRequests == null) {
-					stagedRequests = new LinkedList<Request<?>>();
+					stagedRequests = new LinkedList<Request>();
 				}
 				stagedRequests.add(request);
 				mWaitingRequests.put(cacheKey, stagedRequests);
@@ -254,21 +316,16 @@ public class RequestQueue {
 	 * <code>request.shouldCache()</code>.
 	 * </p>
 	 */
-	<T> void finish(Request<T> request) {
+	void finish(Request request) {
 		// Remove from the set of requests currently being processed.
 		synchronized (mCurrentRequests) {
 			mCurrentRequests.remove(request);
 		}
-		synchronized (mFinishedListeners) {
-			for (RequestFinishedListener<T> listener : mFinishedListeners) {
-				listener.onRequestFinished(request);
-			}
-		}
 
-		if (request.shouldCache()) {
+		if (!request.isForceUpdate() && request.shouldCache()) {
 			synchronized (mWaitingRequests) {
 				String cacheKey = request.getCacheKey();
-				Queue<Request<?>> waitingRequests = mWaitingRequests.remove(cacheKey);
+				Queue<Request> waitingRequests = mWaitingRequests.remove(cacheKey);
 				if (waitingRequests != null) {
 					if (VolleyLog.DEBUG) {
 						VolleyLog.v("Releasing %d waiting requests for cacheKey=%s.", waitingRequests.size(), cacheKey);
