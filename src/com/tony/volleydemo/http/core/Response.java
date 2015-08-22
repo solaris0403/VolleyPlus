@@ -24,31 +24,12 @@ import com.tony.volleydemo.http.cache.DiskCache;
  * @param <T> Parsed type of this response
  */
 public class Response<T> {
-
-    /** Callback interface for delivering parsed responses. */
-    public interface Listener<T> {
-        /** Called when a response is received. */
-        public void onResponse(T response);
-    }
-
-    /** Callback interface for delivering error responses. */
-    public interface ErrorListener {
-        /**
-         * Callback method that an error has been occurred with the
-         * provided error code and optional user-readable message.
-         */
-        public void onErrorResponse(VolleyError error);
-    }
 	
-    /** Returns a successful response containing the parsed result. */
-    public static <T> Response<T> success(T result, NetworkResponse response) {
-        return new Response<T>(result, new DiskCache.Entry(response.data, response.headers));
-    }
+	/** Returns a successful response containing the parsed result. */
+	public static <T> Response<T> success(T result, Cache.Entry cacheEntry) {
+		return new Response<T>(result, cacheEntry);
+	}
     
-    /** Returns a successful response containing the parsed result. */
-    public static <T> Response<T> success(T result, Cache.Entry cacheEntry) {
-        return new Response<T>(result, cacheEntry);
-    }
     /**
      * Returns a failed response containing the given error code and an optional
      * localized message displayed to the user.
@@ -57,9 +38,6 @@ public class Response<T> {
         return new Response<T>(error);
     }
     
-
-    
-
     /** Parsed response, or null in the case of error. */
     public final T result;
 

@@ -74,22 +74,13 @@ public interface Cache {
 	/**
 	 * Data and metadata for an entry returned by the cache.
 	 */
-	public static class Entry {
-		public Entry() {
-		}
-
-		public Entry(byte[] data, Map<String, String> responseHeaders) {
-			this.data = data;
-			this.responseHeaders = responseHeaders;
-		}
+	public static class Entry {		
 		/** The data returned from cache. */
 		public byte[] data;
+		
 		/** Expire time for cache entry. */
 		public long expireTime;
-
-		/** Charset for cache entry, retrieve by the http header. */
-		public String charset;
-
+		
 		/** ETag for cache coherency. */
 		public String etag;
 
@@ -99,6 +90,12 @@ public interface Cache {
 		/** The last modified date for the requested object. */
 		public long lastModified;
 
+        /** TTL for this record. */
+        public long ttl;
+
+        /** Soft TTL for this record. */
+        public long softTtl;
+        
 		/**
 		 * Immutable response headers as received from server; must be non-null.
 		 */

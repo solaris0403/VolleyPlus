@@ -40,7 +40,6 @@ import com.tony.volleydemo.http.cache.Cache;
 import com.tony.volleydemo.http.cache.Cache.Entry;
 import com.tony.volleydemo.http.core.AuthFailureError;
 import com.tony.volleydemo.http.core.Delivery;
-import com.tony.volleydemo.http.core.HttpUtils;
 import com.tony.volleydemo.http.core.Network;
 import com.tony.volleydemo.http.core.NetworkError;
 import com.tony.volleydemo.http.core.NetworkResponse;
@@ -66,18 +65,17 @@ public class BasicNetwork implements Network {
 
 	private final HttpStack mHttpStack;
 
-	//protected final ByteArrayPool mPool;
+	protected final ByteArrayPool mPool;
 
 	/**
 	 * The default charset only use when response doesn't offer the Content-Type
 	 * header.
 	 */
-	private final String mDefaultCharset;
+	//private final String mDefaultCharset;
 
 	/** Request delivery mechanism. */
 	private Delivery mDelivery;
 
-	//
     /**
      * @param httpStack HTTP stack to be used
 	 * @param defaultCharset default charset if response does not provided.
@@ -85,29 +83,36 @@ public class BasicNetwork implements Network {
     public BasicNetwork(HttpStack httpStack) {
         // If a pool isn't passed in, then build a small default pool that will give us a lot of
         // benefit and not use too much memory.
-        this(httpStack, DEFAULT_POOL_SIZE, "application/x-www-form-urlencoded; charset=utf-8");
+        this(httpStack, new ByteArrayPool(DEFAULT_POOL_SIZE));
     }
 	
     /**
      * @param httpStack HTTP stack to be used
 	 * @param defaultCharset default charset if response does not provided.
      */
-    public BasicNetwork(HttpStack httpStack, String defaultCharset) {
-        // If a pool isn't passed in, then build a small default pool that will give us a lot of
-        // benefit and not use too much memory.
-        this(httpStack, DEFAULT_POOL_SIZE, defaultCharset);
+//    public BasicNetwork(HttpStack httpStack, String defaultCharset) {
+//        // If a pool isn't passed in, then build a small default pool that will give us a lot of
+//        // benefit and not use too much memory.
+//        this(httpStack, DEFAULT_POOL_SIZE, defaultCharset);
+//    }
+    /**
+     * @param httpStack HTTP stack to be used
+     * @param pool a buffer pool that improves GC performance in copy operations
+     */
+    public BasicNetwork(HttpStack httpStack, ByteArrayPool pool) {
+        mHttpStack = httpStack;
+        mPool = pool;
     }
-
     /**
      * @param httpStack HTTP stack to be used
      * @param bytePoolSize Size of buffer pool that improves GC performance in copy operations.
 	 * @param defaultCharset when Http Header doesn't offer the 'Content-Type:Charset', it will be use.
      */
-    public BasicNetwork(HttpStack httpStack, int bytePoolSize, String defaultCharset) {
-		ByteArrayPool.init(bytePoolSize);
-		mDefaultCharset = defaultCharset;
-		mHttpStack = httpStack;
-    }
+//    public BasicNetwork(HttpStack httpStack, int bytePoolSize, String defaultCharset) {
+//		ByteArrayPool.init(bytePoolSize);
+//		mDefaultCharset = defaultCharset;
+//		mHttpStack = httpStack;
+//    }
 
 	@Override
 	public void setDelivery(Delivery delivery) {
@@ -145,6 +150,7 @@ public class BasicNetwork implements Network {
 				StatusLine statusLine = httpResponse.getStatusLine();
 				int statusCode = statusLine.getStatusCode();
 
+				 responseHeaders = convertHeaders(httpResponse.getAllHeaders());
 				// Handle cache validation.
 				if (statusCode == HttpStatus.SC_NOT_MODIFIED) {
 					Entry entry = request.getCacheEntry();
@@ -179,8 +185,8 @@ public class BasicNetwork implements Network {
 				if (statusCode < 200 || statusCode > 299) {
 					throw new IOException();
 				}
-				responseContents = request.handleResponse(httpResponse, mDelivery);
-				logSlowRequests(requestLifetime, request, responseContents, statusLine);
+				//responseContents = request.handleResponse(httpResponse, mDelivery);
+			//	logSlowRequests(requestLifetime, request, responseContents, statusLine);
 				return new NetworkResponse(statusCode, responseContents, responseHeaders, false, SystemClock.elapsedRealtime() - requestStart);
 				// return new NetworkResponse(statusCode, responseContents,
 				// parseCharset(httpResponse));
@@ -241,21 +247,14 @@ public class BasicNetwork implements Network {
 	private void attemptRetryOnException(String logPrefix, Request<?> request, VolleyError exception) throws VolleyError {
 		RetryPolicy retryPolicy = request.getRetryPolicy();
 		int oldTimeout = request.getTimeoutMs();
-
 		try {
 			retryPolicy.retry(exception);
 		} catch (VolleyError e) {
 			request.addMarker(String.format("%s-timeout-giveup [timeout=%s]", logPrefix, oldTimeout));
 			throw e;
 		}
-
 		request.addMarker(String.format("%s-retry [timeout=%s]", logPrefix, oldTimeout));
 		mDelivery.postRetry(request);
-	}
-
-	protected void logError(String what, String url, long start) {
-		long now = SystemClock.elapsedRealtime();
-		VolleyLog.v("HTTP ERROR(%s) %d ms to fetch %s", what, (now - start), url);
 	}
 
     private void addCacheHeaders(Map<String, String> headers, Cache.Entry entry) {
@@ -274,6 +273,11 @@ public class BasicNetwork implements Network {
         }
     }
     
+	protected void logError(String what, String url, long start) {
+		long now = SystemClock.elapsedRealtime();
+		VolleyLog.v("HTTP ERROR(%s) %d ms to fetch %s", what, (now - start), url);
+	}
+	
     /** Reads the contents of HttpEntity into a byte[]. */
     private byte[] entityToBytes(HttpEntity entity) throws IOException, ServerError {
         PoolingByteArrayOutputStream bytes =
@@ -284,7 +288,7 @@ public class BasicNetwork implements Network {
             if (in == null) {
                 throw new ServerError();
             }
-            buffer =  ByteArrayPool.get().getBuf(1024);
+            buffer =  mPool.getBuf(1024);
             int count;
             while ((count = in.read(buffer)) != -1) {
                 bytes.write(buffer, 0, count);
@@ -299,7 +303,7 @@ public class BasicNetwork implements Network {
                 // an invalid state.
                 VolleyLog.v("Error occured when calling consumingContent");
             }
-            ByteArrayPool.get().returnBuf(buffer);
+            mPool.returnBuf(buffer);
             bytes.close();
         }
     }
@@ -314,18 +318,4 @@ public class BasicNetwork implements Network {
         }
         return result;
     }
-    
-	/**
-	 * Returns the charset specified in the Content-Type of this header, or the
-	 * defaultCharset if none can be found.
-	 */
-	private String parseCharset(HttpResponse response) {
-		String charset = HttpUtils.getCharset(response);
-		return charset == null ? mDefaultCharset : charset;
-	}
-
-	public String getDefaultCharset() {
-		return mDefaultCharset;
-	}
-
 }

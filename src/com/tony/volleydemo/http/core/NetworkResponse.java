@@ -21,14 +21,12 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.apache.http.HttpStatus;
-import org.apache.http.protocol.HTTP;
 
 /**
  * Data and headers returned from {@link Network#performRequest(Request)}.
  */
-@SuppressWarnings("serial")
 public class NetworkResponse implements Serializable {
-
+	private static final long serialVersionUID = -20150728102000L;
     /**
      * Creates a new network response.
      * @param statusCode the HTTP status code
@@ -76,5 +74,4 @@ public class NetworkResponse implements Serializable {
 
 	/** Network roundtrip time in milliseconds. */
 	public final long networkTimeMs;
-
 }

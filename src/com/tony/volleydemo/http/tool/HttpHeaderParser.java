@@ -111,8 +111,8 @@ public class HttpHeaderParser {
         Cache.Entry entry = new Cache.Entry();
         entry.data = response.data;
         entry.etag = serverEtag;
-//        entry.softTtl = softExpire;
-//        entry.ttl = finalExpire;
+        entry.softTtl = softExpire;
+        entry.ttl = finalExpire;
         entry.serverDate = serverDate;
         entry.lastModified = lastModified;
         entry.responseHeaders = headers;

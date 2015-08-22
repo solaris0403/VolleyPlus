@@ -56,10 +56,6 @@ public class HttpClientStack implements HttpStack {
 
 	protected final HttpClient mClient;
 
-	public HttpClientStack(String userAgent) {
-		mClient = AndroidHttpClient.newInstance(userAgent);
-	}
-
 	public HttpClientStack(HttpClient client) {
 		mClient = client;
 	}
@@ -84,6 +80,7 @@ public class HttpClientStack implements HttpStack {
 		HttpUriRequest httpRequest = createHttpRequest(request, additionalHeaders);
 		addHeaders(httpRequest, additionalHeaders);
 		addHeaders(httpRequest, request.getHeaders());
+		onPrepareRequest(httpRequest);
 		HttpParams httpParams = httpRequest.getParams();
 		int timeoutMs = request.getTimeoutMs();
 		// TODO: Reevaluate this connection timeout based on more wide-scale
@@ -96,7 +93,8 @@ public class HttpClientStack implements HttpStack {
 	/**
 	 * Creates the appropriate subclass of HttpUriRequest for passed in request.
 	 */
-	private static HttpUriRequest createHttpRequest(Request<?> request, Map<String, String> additionalHeaders) throws AuthFailureError {
+	@SuppressWarnings("deprecation")
+	/* protected */ static HttpUriRequest createHttpRequest(Request<?> request, Map<String, String> additionalHeaders) throws AuthFailureError {
 		switch (request.getMethod()) {
 		case Method.DEPRECATED_GET_OR_POST:
 			// This is the deprecated way that needs to be handled for backwards
@@ -104,11 +102,12 @@ public class HttpClientStack implements HttpStack {
 			// If the request's post body is null, then the assumption is that
 			// the request is
 			// GET. Otherwise, it is assumed that the request is a POST.
-			byte[] postBody = request.getBody();
+			byte[] postBody = request.getPostBody();
 			if (postBody != null) {
 				HttpPost postRequest = new HttpPost(request.getUrl());
-				postRequest.addHeader(HEADER_CONTENT_TYPE, request.getBodyContentType());
-				HttpEntity entity = new ByteArrayEntity(postBody);
+				postRequest.addHeader(HEADER_CONTENT_TYPE, request.getPostBodyContentType());
+				HttpEntity entity;
+				entity = new ByteArrayEntity(postBody);
 				postRequest.setEntity(entity);
 				return postRequest;
 			} else {
@@ -163,7 +162,7 @@ public class HttpClientStack implements HttpStack {
 	 * </p>
 	 */
 	protected void onPrepareRequest(HttpUriRequest request) throws IOException {
-		request.addHeader("Accept-Encoding", "gzip");
+		//request.addHeader("Accept-Encoding", "gzip");
 	}
 
 	/**

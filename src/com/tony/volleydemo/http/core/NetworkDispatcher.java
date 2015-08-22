@@ -38,17 +38,13 @@ import com.tony.volleydemo.http.cache.DiskCache;
 @SuppressWarnings("rawtypes")
 public class NetworkDispatcher extends Thread {
 	/** The queue of requests to service. */
-	private final BlockingQueue<Request> mQueue;
-
+	private final BlockingQueue<Request<?>> mQueue;
 	/** The network interface for processing requests. */
 	private final Network mNetwork;
-
 	/** The cache to write to. */
 	private final DiskCache mCache;
-
 	/** For posting responses and errors. */
 	private final Delivery mDelivery;
-
 	/** Used for telling us to die. */
 	private volatile boolean mQuit = false;
 
@@ -65,7 +61,7 @@ public class NetworkDispatcher extends Thread {
 	 * @param delivery
 	 *            Delivery interface to use for posting responses
 	 */
-	public NetworkDispatcher(BlockingQueue<Request> queue, Network network, DiskCache cache, Delivery delivery) {
+	public NetworkDispatcher(BlockingQueue<Request<?>> queue, Network network, DiskCache cache, Delivery delivery) {
 		mQueue = queue;
 		mCache = cache;
 		mNetwork = network;
@@ -120,7 +116,7 @@ public class NetworkDispatcher extends Thread {
 					mDelivery.postFinish(request);
 					continue;
 				}
-
+				
 				addTrafficStatsTag(request);
 
 				// Perform the network request.

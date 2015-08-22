@@ -51,10 +51,11 @@ import com.tony.volleydemo.http.core.Request.Method;
  * An {@link HttpStack} based on {@link HttpURLConnection}.
  */
 public class HurlStack implements HttpStack {
-	private final UrlRewriter mUrlRewriter;
-	private String mUserAgent;
-	private final SSLSocketFactory mSslSocketFactory;
 	private static final String HEADER_CONTENT_TYPE = "Content-Type";
+	private final UrlRewriter mUrlRewriter;
+//	private String mUserAgent;
+	private final SSLSocketFactory mSslSocketFactory;
+	
 
 	/**
 	 * An interface for transforming URLs before use.
@@ -98,11 +99,10 @@ public class HurlStack implements HttpStack {
 	@Override
 	public HttpResponse performRequest(Request<?> request, Map<String, String> additionalHeaders) throws IOException, AuthFailureError {
 		String url = request.getUrl();
-
 		HashMap<String, String> map = new HashMap<String, String>();
-		if (!TextUtils.isEmpty(mUserAgent)) {
-			map.put(HTTP.USER_AGENT, mUserAgent);
-		}
+//		if (!TextUtils.isEmpty(mUserAgent)) {
+//			map.put(HTTP.USER_AGENT, mUserAgent);
+//		}
 		map.putAll(request.getHeaders());
 		map.putAll(additionalHeaders);
 		if (mUrlRewriter != null) {
@@ -112,15 +112,14 @@ public class HurlStack implements HttpStack {
 			}
 			url = rewritten;
 		}
-		URL parsedUrl = new URL(request.getUrl());
+		URL parsedUrl = new URL(url);
 		HttpURLConnection connection = openConnection(parsedUrl, request);
 		for (String headerName : map.keySet()) {
 			connection.addRequestProperty(headerName, map.get(headerName));
 		}
-
 		setConnectionParametersForRequest(connection, request);
 		// Initialize HttpResponse with data from the HttpURLConnection.
-
+		ProtocolVersion protocolVersion = new ProtocolVersion("HTTP", 1, 1);
 		int responseCode = connection.getResponseCode();
 		if (responseCode == -1) {
 			// -1 is returned by getResponseCode() if the response code could
@@ -129,7 +128,7 @@ public class HurlStack implements HttpStack {
 			// connection.
 			throw new IOException("Could not retrieve response code from HttpUrlConnection.");
 		}
-		StatusLine responseStatus = new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1), connection.getResponseCode(), connection.getResponseMessage());
+		StatusLine responseStatus = new BasicStatusLine(protocolVersion, connection.getResponseCode(), connection.getResponseMessage());
 		BasicHttpResponse response = new BasicHttpResponse(responseStatus);
 		if (hasResponseBody(request.getMethod(), responseStatus.getStatusCode())) {
 			response.setEntity(entityFromConnection(connection));
@@ -141,7 +140,6 @@ public class HurlStack implements HttpStack {
 				response.addHeader(h);
 			}
 		}
-
 		return response;
 	}
 
@@ -209,7 +207,8 @@ public class HurlStack implements HttpStack {
 
 		return connection;
 	}
-
+	
+	@SuppressWarnings("deprecation")
 	private static void setConnectionParametersForRequest(HttpURLConnection connection, Request<?> request) throws IOException, AuthFailureError {
 		switch (request.getMethod()) {
 		case Method.DEPRECATED_GET_OR_POST:
@@ -218,7 +217,7 @@ public class HurlStack implements HttpStack {
 			// If the request's post body is null, then the assumption is that
 			// the request is
 			// GET. Otherwise, it is assumed that the request is a POST.
-			byte[] postBody = request.getBody();
+			byte[] postBody = request.getPostBody();
 			if (postBody != null) {
 				// Prepare output. There is no need to set Content-Length
 				// explicitly,
@@ -227,7 +226,7 @@ public class HurlStack implements HttpStack {
 				// output stream.
 				connection.setDoOutput(true);
 				connection.setRequestMethod("POST");
-				connection.addRequestProperty(HEADER_CONTENT_TYPE, request.getBodyContentType());
+				connection.addRequestProperty(HEADER_CONTENT_TYPE, request.getPostBodyContentType());
 				DataOutputStream out = new DataOutputStream(connection.getOutputStream());
 				out.write(postBody);
 				out.close();
@@ -260,8 +259,8 @@ public class HurlStack implements HttpStack {
 			connection.setRequestMethod("TRACE");
 			break;
 		case Method.PATCH:
-			addBodyIfExists(connection, request);
 			connection.setRequestMethod("PATCH");
+			addBodyIfExists(connection, request);
 			break;
 		default:
 			throw new IllegalStateException("Unknown method type.");
@@ -272,7 +271,7 @@ public class HurlStack implements HttpStack {
 		byte[] body = request.getBody();
 		if (body != null) {
 			connection.setDoOutput(true);
-			connection.addRequestProperty(HTTP.CONTENT_TYPE, request.getBodyContentType());
+			connection.addRequestProperty(HEADER_CONTENT_TYPE, request.getBodyContentType());
 			DataOutputStream out = new DataOutputStream(connection.getOutputStream());
 			out.write(body);
 			out.close();

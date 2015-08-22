@@ -30,16 +30,15 @@ import com.tony.volleydemo.http.cache.DiskCache;
  * Cache misses and responses that require refresh are enqueued on the specified
  * network queue for processing by a {@link NetworkDispatcher}.
  */
-@SuppressWarnings("rawtypes")
 public class CacheDispatcher extends Thread {
 
 	private static final boolean DEBUG = VolleyLog.DEBUG;
 
 	/** The queue of requests coming in for triage. */
-	private final BlockingQueue<Request> mCacheQueue;
+	private final BlockingQueue<Request<?>> mCacheQueue;
 
 	/** The queue of requests going out to the network. */
-	private final BlockingQueue<Request> mNetworkQueue;
+	private final BlockingQueue<Request<?>> mNetworkQueue;
 
 	/** The cache to read from. */
 	private final DiskCache mCache;
@@ -63,11 +62,11 @@ public class CacheDispatcher extends Thread {
 	 * @param delivery
 	 *            Delivery interface to use for posting responses
 	 */
-	public CacheDispatcher(BlockingQueue<Request> cacheQueue, BlockingQueue<Request> networkQueue, DiskCache cache, Delivery delivery) {
-		mCache = cache;
-		mDelivery = delivery;
+	public CacheDispatcher(BlockingQueue<Request<?>> cacheQueue, BlockingQueue<Request<?>> networkQueue, DiskCache cache, Delivery delivery) {
 		mCacheQueue = cacheQueue;
 		mNetworkQueue = networkQueue;
+		mCache = cache;
+		mDelivery = delivery;
 	}
 
 	/**
@@ -86,14 +85,15 @@ public class CacheDispatcher extends Thread {
 		Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
 
 		// Make a blocking call to initialize the cache.
-		if (mCache != null)
+		if (mCache != null){
 			mCache.initialize();
+		}
 
 		while (true) {
 			try {
 				// Get a request from the cache triage queue, blocking until
 				// at least one is available.
-				final Request request = mCacheQueue.take();
+				final Request<?> request = mCacheQueue.take();
 				request.addMarker("cache-queue-take");
 				mDelivery.postPreExecute(request);
 
@@ -119,6 +119,7 @@ public class CacheDispatcher extends Thread {
 				// If it is completely expired, just send it to the network.
 				if (entry.isExpired()) {
 					request.addMarker("cache-hit-expired");
+					request.setCacheEntry(entry);
 					mNetworkQueue.put(request);
 					mDelivery.postNetworking(request);
 					continue;
@@ -141,7 +142,8 @@ public class CacheDispatcher extends Thread {
 					// but we need to also send the request to the network for
 					// refreshing.
 					request.addMarker("cache-hit-refresh-needed");
-
+					request.setCacheEntry(entry);
+					
 					// Mark the response as intermediate.
 					response.intermediate = true;
 
@@ -161,8 +163,10 @@ public class CacheDispatcher extends Thread {
 				}
 			} catch (InterruptedException e) {
 				// We may have been interrupted because it was time to quit.
-				if (mQuit)
+				if (mQuit) {
 					return;
+				}
+				continue;
 			}
 		}
 	}

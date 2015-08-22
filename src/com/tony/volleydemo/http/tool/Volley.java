@@ -60,7 +60,6 @@ public class Volley {
 			userAgent = packageName + "/" + info.versionCode;
 		} catch (NameNotFoundException e) {
 		}
-
 		if (stack == null) {
 			if (Build.VERSION.SDK_INT >= 9) {
 				stack = new HurlStack();
@@ -71,7 +70,6 @@ public class Volley {
 				stack = new HttpClientStack(AndroidHttpClient.newInstance(userAgent));
 			}
 		}
-
 		Network network = new BasicNetwork(stack);
 		RequestQueue queue;
 		if (maxDiskCacheBytes <= -1) {
@@ -81,9 +79,7 @@ public class Volley {
 			// Disk cache size specified
 			queue = new RequestQueue(new DiskCache(cacheDir, maxDiskCacheBytes), network);
 		}
-
 		queue.start();
-
 		return queue;
 	}
 

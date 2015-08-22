@@ -375,7 +375,12 @@ public class DiskCache implements Cache {
 		/** The last modified date for the requested object. */
 		public long lastModified;
 
+        /** TTL for this record. */
+        public long ttl;
 
+        /** Soft TTL for this record. */
+        public long softTtl;
+        
 		/** Headers from the response resulting in this cache entry. */
 		public Map<String, String> responseHeaders;
 
@@ -400,11 +405,11 @@ public class DiskCache implements Cache {
 			this.key = key;
 			this.size = entry.data.length;
 			this.expireTime = entry.expireTime;
-			this.charset = entry.charset;
-
 			this.etag = entry.etag;
 			this.serverDate = entry.serverDate;
 			this.lastModified = entry.lastModified;
+            this.ttl = entry.ttl;
+            this.softTtl = entry.softTtl;
 			this.responseHeaders = entry.responseHeaders;
 		}
 
@@ -430,10 +435,10 @@ public class DiskCache implements Cache {
 			}
 			entry.serverDate = readLong(is);
 			entry.lastModified = readLong(is);
+			entry.ttl = readLong(is);
+	        entry.softTtl = readLong(is);
 			entry.responseHeaders = readStringStringMap(is);
-
 			entry.expireTime = readLong(is);
-			entry.charset = readString(is);
 			return entry;
 		}
 
@@ -444,10 +449,11 @@ public class DiskCache implements Cache {
 			Entry e = new Cache.Entry();
 			e.data = data;
 			e.expireTime = expireTime;
-			e.charset = charset;
 			e.etag = etag;
 			e.serverDate = serverDate;
 			e.lastModified = lastModified;
+			e.ttl = ttl;
+	        e.softTtl = softTtl;
 			e.responseHeaders = responseHeaders;
 			return e;
 		}
@@ -466,11 +472,11 @@ public class DiskCache implements Cache {
 				writeInt(os, CACHE_MAGIC);
 				writeString(os, key);
 				writeLong(os, expireTime);
-				writeString(os, charset);
-
 				writeString(os, etag == null ? "" : etag);
 				writeLong(os, serverDate);
 				writeLong(os, lastModified);
+			    writeLong(os, ttl);
+	            writeLong(os, softTtl);
 				writeStringStringMap(responseHeaders, os);
 
 				os.flush();

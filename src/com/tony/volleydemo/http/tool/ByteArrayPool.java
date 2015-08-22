@@ -73,19 +73,20 @@ public class ByteArrayPool {
 		}
 	};
 
-//	/**
-//	 * @param sizeLimit
-//	 *            the maximum size of the pool, in bytes
-//	 */
-//	public ByteArrayPool(int sizeLimit) {
-//		mSizeLimit = sizeLimit;
-//	}
-    /**
-     * @param sizeLimit the maximum size of the pool, in bytes
-     */
-    private ByteArrayPool(int sizeLimit) {
-        mSizeLimit = sizeLimit;
-    }
+	/**
+	 * @param sizeLimit
+	 *            the maximum size of the pool, in bytes
+	 */
+	public ByteArrayPool(int sizeLimit) {
+		mSizeLimit = sizeLimit;
+		mPool = this;
+	}
+//    /**
+//     * @param sizeLimit the maximum size of the pool, in bytes
+//     */
+//    private ByteArrayPool(int sizeLimit) {
+//        mSizeLimit = sizeLimit;
+//    }
     /** Singleton for this class. */
 	private static ByteArrayPool mPool;
 
