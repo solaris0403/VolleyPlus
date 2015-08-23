@@ -71,48 +71,46 @@ public class BasicNetwork implements Network {
 	 * The default charset only use when response doesn't offer the Content-Type
 	 * header.
 	 */
-	//private final String mDefaultCharset;
+	// private final String mDefaultCharset;
 
 	/** Request delivery mechanism. */
 	private Delivery mDelivery;
 
-    /**
-     * @param httpStack HTTP stack to be used
-	 * @param defaultCharset default charset if response does not provided.
-     */
-    public BasicNetwork(HttpStack httpStack) {
-        // If a pool isn't passed in, then build a small default pool that will give us a lot of
-        // benefit and not use too much memory.
-        this(httpStack, new ByteArrayPool(DEFAULT_POOL_SIZE));
-    }
-	
-    /**
-     * @param httpStack HTTP stack to be used
-	 * @param defaultCharset default charset if response does not provided.
-     */
-//    public BasicNetwork(HttpStack httpStack, String defaultCharset) {
-//        // If a pool isn't passed in, then build a small default pool that will give us a lot of
-//        // benefit and not use too much memory.
-//        this(httpStack, DEFAULT_POOL_SIZE, defaultCharset);
-//    }
-    /**
-     * @param httpStack HTTP stack to be used
-     * @param pool a buffer pool that improves GC performance in copy operations
-     */
-    public BasicNetwork(HttpStack httpStack, ByteArrayPool pool) {
-        mHttpStack = httpStack;
-        mPool = pool;
-    }
-    /**
-     * @param httpStack HTTP stack to be used
-     * @param bytePoolSize Size of buffer pool that improves GC performance in copy operations.
-	 * @param defaultCharset when Http Header doesn't offer the 'Content-Type:Charset', it will be use.
-     */
-//    public BasicNetwork(HttpStack httpStack, int bytePoolSize, String defaultCharset) {
-//		ByteArrayPool.init(bytePoolSize);
-//		mDefaultCharset = defaultCharset;
-//		mHttpStack = httpStack;
-//    }
+	/**
+	 * @param httpStack
+	 *            HTTP stack to be used
+	 * @param defaultCharset
+	 *            default charset if response does not provided.
+	 */
+	public BasicNetwork(HttpStack httpStack) {
+		// If a pool isn't passed in, then build a small default pool that will
+		// give us a lot of
+		// benefit and not use too much memory.
+		this(httpStack, new ByteArrayPool(DEFAULT_POOL_SIZE));
+	}
+
+	/**
+	 * @param httpStack
+	 *            HTTP stack to be used
+	 * @param defaultCharset
+	 *            default charset if response does not provided.
+	 */
+	// public BasicNetwork(HttpStack httpStack, String defaultCharset) {
+	// // If a pool isn't passed in, then build a small default pool that will
+	// give us a lot of
+	// // benefit and not use too much memory.
+	// this(httpStack, DEFAULT_POOL_SIZE, defaultCharset);
+	// }
+	/**
+	 * @param httpStack
+	 *            HTTP stack to be used
+	 * @param pool
+	 *            a buffer pool that improves GC performance in copy operations
+	 */
+	public BasicNetwork(HttpStack httpStack, ByteArrayPool pool) {
+		mHttpStack = httpStack;
+		mPool = pool;
+	}
 
 	@Override
 	public void setDelivery(Delivery delivery) {
@@ -121,13 +119,12 @@ public class BasicNetwork implements Network {
 
 	@Override
 	public NetworkResponse performRequest(Request<?> request) throws VolleyError {
-		long requestStart = SystemClock.elapsedRealtime();
 		// Determine if request had non-http perform.
 		NetworkResponse networkResponse = request.perform();
 		if (networkResponse != null) {
 			return networkResponse;
 		}
-
+		long requestStart = SystemClock.elapsedRealtime();
 		while (true) {
 			// If the request was cancelled already,
 			// do not perform the network request.
@@ -149,8 +146,8 @@ public class BasicNetwork implements Network {
 				httpResponse = mHttpStack.performRequest(request, headers);
 				StatusLine statusLine = httpResponse.getStatusLine();
 				int statusCode = statusLine.getStatusCode();
-
-				 responseHeaders = convertHeaders(httpResponse.getAllHeaders());
+				responseHeaders = convertHeaders(httpResponse.getAllHeaders());
+				responseContents = request.handleResponse(httpResponse, mDelivery);
 				// Handle cache validation.
 				if (statusCode == HttpStatus.SC_NOT_MODIFIED) {
 					Entry entry = request.getCacheEntry();
@@ -169,8 +166,9 @@ public class BasicNetwork implements Network {
 					String newUrl = responseHeaders.get("Location");
 					request.setRedirectUrl(newUrl);
 				}
+				
 				// Some responses such as 204s do not have content. We must
-				// check.
+//				 check.
 				if (httpResponse.getEntity() != null) {
 					responseContents = entityToBytes(httpResponse.getEntity());
 				} else {
@@ -178,18 +176,15 @@ public class BasicNetwork implements Network {
 					// no-content request.
 					responseContents = new byte[0];
 				}
+				
 				// if the request is slow, log it.
 				long requestLifetime = SystemClock.elapsedRealtime() - requestStart;
 				logSlowRequests(requestLifetime, request, responseContents, statusLine);
-
+				
 				if (statusCode < 200 || statusCode > 299) {
 					throw new IOException();
 				}
-				//responseContents = request.handleResponse(httpResponse, mDelivery);
-			//	logSlowRequests(requestLifetime, request, responseContents, statusLine);
 				return new NetworkResponse(statusCode, responseContents, responseHeaders, false, SystemClock.elapsedRealtime() - requestStart);
-				// return new NetworkResponse(statusCode, responseContents,
-				// parseCharset(httpResponse));
 			} catch (SocketTimeoutException e) {
 				attemptRetryOnException("socket", request, new TimeoutError());
 			} catch (ConnectTimeoutException e) {
@@ -209,16 +204,14 @@ public class BasicNetwork implements Network {
 					VolleyLog.e("Unexpected response code %d for %s", statusCode, request.getUrl());
 				}
 				if (responseContents != null) {
-					// networkResponse = new NetworkResponse(statusCode,
-					// responseContents, parseCharset(httpResponse));
 					networkResponse = new NetworkResponse(statusCode, responseContents, responseHeaders, false, SystemClock.elapsedRealtime() - requestStart);
 					if (statusCode == HttpStatus.SC_UNAUTHORIZED || statusCode == HttpStatus.SC_FORBIDDEN) {
 						attemptRetryOnException("auth", request, new AuthFailureError(networkResponse));
 					} else if (statusCode == HttpStatus.SC_MOVED_PERMANENTLY || statusCode == HttpStatus.SC_MOVED_TEMPORARILY) {
 						attemptRetryOnException("redirect", request, new RedirectError(networkResponse));
 					} else {
-						 // TODO: Only throw ServerError for 5xx status codes.
-                        throw new ServerError(networkResponse);
+						// TODO: Only throw ServerError for 5xx status codes.
+						throw new ServerError(networkResponse);
 					}
 				} else {
 					throw new NetworkError(networkResponse);
@@ -257,65 +250,66 @@ public class BasicNetwork implements Network {
 		mDelivery.postRetry(request);
 	}
 
-    private void addCacheHeaders(Map<String, String> headers, Cache.Entry entry) {
-        // If there's no cache entry, we're done.
-        if (entry == null) {
-            return;
-        }
+	private void addCacheHeaders(Map<String, String> headers, Cache.Entry entry) {
+		// If there's no cache entry, we're done.
+		if (entry == null) {
+			return;
+		}
 
-        if (entry.etag != null) {
-            headers.put("If-None-Match", entry.etag);
-        }
+		if (entry.etag != null) {
+			headers.put("If-None-Match", entry.etag);
+		}
 
-        if (entry.lastModified > 0) {
-            Date refTime = new Date(entry.lastModified);
-            headers.put("If-Modified-Since", DateUtils.formatDate(refTime));
-        }
-    }
-    
+		if (entry.lastModified > 0) {
+			Date refTime = new Date(entry.lastModified);
+			headers.put("If-Modified-Since", DateUtils.formatDate(refTime));
+		}
+	}
+
 	protected void logError(String what, String url, long start) {
 		long now = SystemClock.elapsedRealtime();
 		VolleyLog.v("HTTP ERROR(%s) %d ms to fetch %s", what, (now - start), url);
 	}
-	
-    /** Reads the contents of HttpEntity into a byte[]. */
-    private byte[] entityToBytes(HttpEntity entity) throws IOException, ServerError {
-        PoolingByteArrayOutputStream bytes =
-                new PoolingByteArrayOutputStream( ByteArrayPool.get(), (int) entity.getContentLength());
-        byte[] buffer = null;
-        try {
-            InputStream in = entity.getContent();
-            if (in == null) {
-                throw new ServerError();
-            }
-            buffer =  mPool.getBuf(1024);
-            int count;
-            while ((count = in.read(buffer)) != -1) {
-                bytes.write(buffer, 0, count);
-            }
-            return bytes.toByteArray();
-        } finally {
-            try {
-                // Close the InputStream and release the resources by "consuming the content".
-                entity.consumeContent();
-            } catch (IOException e) {
-                // This can happen if there was an exception above that left the entity in
-                // an invalid state.
-                VolleyLog.v("Error occured when calling consumingContent");
-            }
-            mPool.returnBuf(buffer);
-            bytes.close();
-        }
-    }
-    
-    /**
-     * Converts Headers[] to Map<String, String>.
-     */
-    protected static Map<String, String> convertHeaders(Header[] headers) {
-        Map<String, String> result = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
-        for (int i = 0; i < headers.length; i++) {
-            result.put(headers[i].getName(), headers[i].getValue());
-        }
-        return result;
-    }
+
+	/** Reads the contents of HttpEntity into a byte[]. */
+	private byte[] entityToBytes(HttpEntity entity) throws IOException, ServerError {
+		PoolingByteArrayOutputStream bytes = new PoolingByteArrayOutputStream(mPool, (int) entity.getContentLength());
+		byte[] buffer = null;
+		try {
+			InputStream in = entity.getContent();
+			if (in == null) {
+				throw new ServerError();
+			}
+			buffer = mPool.getBuf(1024);
+			int count;
+			while ((count = in.read(buffer)) != -1) {
+				bytes.write(buffer, 0, count);
+			}
+			return bytes.toByteArray();
+		} finally {
+			try {
+				// Close the InputStream and release the resources by
+				// "consuming the content".
+				entity.consumeContent();
+			} catch (IOException e) {
+				// This can happen if there was an exception above that left the
+				// entity in
+				// an invalid state.
+				VolleyLog.v("Error occured when calling consumingContent");
+			}
+			mPool.returnBuf(buffer);
+			bytes.close();
+		}
+	}
+
+	/**
+	 * Converts Headers[] to Map<String, String>.
+	 */
+	protected static Map<String, String> convertHeaders(Header[] headers) {
+		Map<String, String> result = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+		for (int i = 0; i < headers.length; i++) {
+			result.put(headers[i].getName(), headers[i].getValue());
+		}
+		return result;
+	}
 }

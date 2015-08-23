@@ -45,7 +45,7 @@ public class FileDownloadRequest extends Request<Void> {
 	private File mTemporaryFile;
 
 	public FileDownloadRequest(String storeFilePath, String url) {
-		super(url, null);
+		super(Method.GET, url, null);
 		mStoreFile = new File(storeFilePath);
 		mTemporaryFile = new File(storeFilePath + ".tmp");
 
@@ -59,6 +59,7 @@ public class FileDownloadRequest extends Request<Void> {
 		// Note: if the request header "Range" greater than the actual length that server-size have,
 		// the response header "Content-Range" will return "bytes */[actual length]", that's wrong.
 		addHeader("Range", "bytes=" + mTemporaryFile.length() + "-");
+
 //		Suppress the HttpStack accept gzip encoding, avoid the progress calculate wrong problem.
 //		addHeader("Accept-Encoding", "identity");
 	}
@@ -69,6 +70,7 @@ public class FileDownloadRequest extends Request<Void> {
 		if (!isCanceled()) {
 			if (mTemporaryFile.canRead() && mTemporaryFile.length() > 0) {
 				if (mTemporaryFile.renameTo(mStoreFile)) {
+					//TODO .............
 					return Response.success(null, HttpHeaderParser.parseCacheHeaders(response));
 				} else {
 					return Response.error(new VolleyError("Can't rename the download temporary file!"));
@@ -181,7 +183,6 @@ public class FileDownloadRequest extends Request<Void> {
 	public Priority getPriority() {
 		return Priority.LOW;
 	}
-
 
 	@Override
 	protected void deliverResponse(Void response) {
