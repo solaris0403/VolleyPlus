@@ -16,6 +16,8 @@
 
 package com.tony.volleydemo.http.cache;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,7 +35,6 @@ import java.util.Map;
 import android.os.SystemClock;
 
 import com.tony.volleydemo.http.core.VolleyLog;
-import com.tony.volleydemo.http.cache.Cache;
 
 ;
 
@@ -62,10 +63,10 @@ public class DiskCache implements Cache {
 	private static final float HYSTERESIS_FACTOR = 0.9f;
 
 	/** Magic number for current version of cache file format. */
-	private static final int CACHE_MAGIC = 0x20120504;
+	private static final int CACHE_MAGIC = 0x20150306;
 
 	/**
-	 * Constructs an instance of the DiskCache at the specified directory.
+	 * Constructs an instance of the DiskBasedCache at the specified directory.
 	 * 
 	 * @param rootDirectory
 	 *            The root directory of the cache.
@@ -78,8 +79,8 @@ public class DiskCache implements Cache {
 	}
 
 	/**
-	 * Constructs an instance of the DiskCache at the specified directory using
-	 * the default maximum cache size of 5MB.
+	 * Constructs an instance of the DiskBasedCache at the specified directory
+	 * using the default maximum cache size of 5MB.
 	 * 
 	 * @param rootDirectory
 	 *            The root directory of the cache.
@@ -91,6 +92,7 @@ public class DiskCache implements Cache {
 	/**
 	 * Clears the cache. Deletes all cached files from disk.
 	 */
+	@Override
 	public synchronized void clear() {
 		File[] files = mRootDirectory.listFiles();
 		if (files != null) {
@@ -118,13 +120,13 @@ public class DiskCache implements Cache {
 		File file = getFileForKey(key);
 		CountingInputStream cis = null;
 		try {
-			cis = new CountingInputStream(new FileInputStream(file));
+			cis = new CountingInputStream(new BufferedInputStream(new FileInputStream(file)));
 			CacheHeader.readHeader(cis); // eat header
 			byte[] data = streamToBytes(cis, (int) (file.length() - cis.bytesRead));
 			return entry.toCacheEntry(data);
 		} catch (IOException e) {
 			VolleyLog.d("%s: %s", file.getAbsolutePath(), e.toString());
-			removeEntry(key);
+			remove(key);
 			return null;
 		} catch (NegativeArraySizeException e) {
 			VolleyLog.d("%s: %s", file.getAbsolutePath(), e.toString());
@@ -142,9 +144,10 @@ public class DiskCache implements Cache {
 	}
 
 	/**
-	 * Initializes the DiskCache by scanning for all files currently in the
+	 * Initializes the DiskBasedCache by scanning for all files currently in the
 	 * specified root directory. Creates the root directory if necessary.
 	 */
+	@Override
 	public synchronized void initialize() {
 		if (!mRootDirectory.exists()) {
 			if (!mRootDirectory.mkdirs()) {
@@ -158,16 +161,12 @@ public class DiskCache implements Cache {
 			return;
 		}
 		for (File file : files) {
-			FileInputStream fis = null;
+			BufferedInputStream fis = null;
 			try {
-				fis = new FileInputStream(file);
+				fis = new BufferedInputStream(new FileInputStream(file));
 				CacheHeader entry = CacheHeader.readHeader(fis);
-				if (entry.isExpired()) {
-					file.delete();
-				} else {
-					entry.size = file.length();
-					putEntry(entry.key, entry);
-				}
+				entry.size = file.length();
+				putEntry(entry.key, entry);
 			} catch (IOException e) {
 				if (file != null) {
 					file.delete();
@@ -188,32 +187,20 @@ public class DiskCache implements Cache {
 	 * 
 	 * @param key
 	 *            Cache key
-	 * @param expireTime
-	 *            The new expireTime
+	 * @param fullExpire
+	 *            True to fully expire the entry, false to soft expire
 	 */
-	public synchronized void invalidate(String key, long expireTime) {
+	@Override
+	public synchronized void invalidate(String key, boolean fullExpire) {
 		Entry entry = get(key);
-		if (Entry.invalidate(entry, expireTime)) {
+		if (entry != null) {
+			entry.softTtl = 0;
+			if (fullExpire) {
+				entry.ttl = 0;
+			}
 			put(key, entry);
 		}
-	}
 
-	/**
-	 * Puts the entry with the specified key into the cache.
-	 * 
-	 * @param key
-	 *            The key to identify the entry by.
-	 * @param entry
-	 *            The entry to cache.
-	 */
-	private void putEntry(String key, CacheHeader entry) {
-		if (!mEntries.containsKey(key)) {
-			mTotalSize += entry.size;
-		} else {
-			CacheHeader oldEntry = mEntries.get(key);
-			mTotalSize += (entry.size - oldEntry.size);
-		}
-		mEntries.put(key, entry);
 	}
 
 	/**
@@ -224,7 +211,7 @@ public class DiskCache implements Cache {
 		pruneIfNeeded(entry.data.length);
 		File file = getFileForKey(key);
 		try {
-			FileOutputStream fos = new FileOutputStream(file);
+			BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(file));
 			CacheHeader e = new CacheHeader(key, entry);
 			boolean success = e.writeHeader(fos);
 			if (!success) {
@@ -235,7 +222,6 @@ public class DiskCache implements Cache {
 			fos.write(entry.data);
 			fos.close();
 			putEntry(key, e);
-
 			return;
 		} catch (IOException e) {
 		}
@@ -248,16 +234,10 @@ public class DiskCache implements Cache {
 	/**
 	 * Removes the specified key from the cache if it exists.
 	 */
+	@Override
 	public synchronized void remove(String key) {
 		boolean deleted = getFileForKey(key).delete();
-
-		// Removes the entry identified by 'key' from the cache.
-		CacheHeader entry = mEntries.get(key);
-		if (entry != null) {
-			mTotalSize -= entry.size;
-			mEntries.remove(key);
-		}
-
+		removeEntry(key);
 		if (!deleted) {
 			VolleyLog.d("Could not delete cache entry for key=%s, filename=%s", key, getFilenameForKey(key));
 		}
@@ -326,6 +306,24 @@ public class DiskCache implements Cache {
 	}
 
 	/**
+	 * Puts the entry with the specified key into the cache.
+	 * 
+	 * @param key
+	 *            The key to identify the entry by.
+	 * @param entry
+	 *            The entry to cache.
+	 */
+	private void putEntry(String key, CacheHeader entry) {
+		if (!mEntries.containsKey(key)) {
+			mTotalSize += entry.size;
+		} else {
+			CacheHeader oldEntry = mEntries.get(key);
+			mTotalSize += (entry.size - oldEntry.size);
+		}
+		mEntries.put(key, entry);
+	}
+
+	/**
 	 * Removes the entry identified by 'key' from the cache.
 	 */
 	private void removeEntry(String key) {
@@ -375,20 +373,14 @@ public class DiskCache implements Cache {
 		/** The last modified date for the requested object. */
 		public long lastModified;
 
-        /** TTL for this record. */
-        public long ttl;
+		/** TTL for this record. */
+		public long ttl;
 
-        /** Soft TTL for this record. */
-        public long softTtl;
-        
+		/** Soft TTL for this record. */
+		public long softTtl;
+
 		/** Headers from the response resulting in this cache entry. */
 		public Map<String, String> responseHeaders;
-
-		/** Expire time for cache entry. */
-		public long expireTime;
-
-		/** Charset for cache entry. */
-		public String charset;
 
 		private CacheHeader() {
 		}
@@ -404,12 +396,11 @@ public class DiskCache implements Cache {
 		public CacheHeader(String key, Entry entry) {
 			this.key = key;
 			this.size = entry.data.length;
-			this.expireTime = entry.expireTime;
 			this.etag = entry.etag;
 			this.serverDate = entry.serverDate;
 			this.lastModified = entry.lastModified;
-            this.ttl = entry.ttl;
-            this.softTtl = entry.softTtl;
+			this.ttl = entry.ttl;
+			this.softTtl = entry.softTtl;
 			this.responseHeaders = entry.responseHeaders;
 		}
 
@@ -436,9 +427,9 @@ public class DiskCache implements Cache {
 			entry.serverDate = readLong(is);
 			entry.lastModified = readLong(is);
 			entry.ttl = readLong(is);
-	        entry.softTtl = readLong(is);
+			entry.softTtl = readLong(is);
 			entry.responseHeaders = readStringStringMap(is);
-			entry.expireTime = readLong(is);
+
 			return entry;
 		}
 
@@ -446,21 +437,15 @@ public class DiskCache implements Cache {
 		 * Creates a cache entry for the specified data.
 		 */
 		public Entry toCacheEntry(byte[] data) {
-			Entry e = new Cache.Entry();
+			Entry e = new Entry();
 			e.data = data;
-			e.expireTime = expireTime;
 			e.etag = etag;
 			e.serverDate = serverDate;
 			e.lastModified = lastModified;
 			e.ttl = ttl;
-	        e.softTtl = softTtl;
+			e.softTtl = softTtl;
 			e.responseHeaders = responseHeaders;
 			return e;
-		}
-
-		/** True if the entry is expired. */
-		public boolean isExpired() {
-			return expireTime < System.currentTimeMillis();
 		}
 
 		/**
@@ -471,14 +456,12 @@ public class DiskCache implements Cache {
 			try {
 				writeInt(os, CACHE_MAGIC);
 				writeString(os, key);
-				writeLong(os, expireTime);
 				writeString(os, etag == null ? "" : etag);
 				writeLong(os, serverDate);
 				writeLong(os, lastModified);
-			    writeLong(os, ttl);
-	            writeLong(os, softTtl);
+				writeLong(os, ttl);
+				writeLong(os, softTtl);
 				writeStringStringMap(responseHeaders, os);
-
 				os.flush();
 				return true;
 			} catch (IOException e) {
@@ -486,6 +469,7 @@ public class DiskCache implements Cache {
 				return false;
 			}
 		}
+
 	}
 
 	private static class CountingInputStream extends FilterInputStream {
@@ -607,4 +591,5 @@ public class DiskCache implements Cache {
 		}
 		return result;
 	}
+
 }

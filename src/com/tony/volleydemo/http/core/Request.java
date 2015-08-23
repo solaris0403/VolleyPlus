@@ -16,12 +16,15 @@
 
 package com.tony.volleydemo.http.core;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.http.HttpResponse;
 
 import android.net.TrafficStats;
 import android.net.Uri;
@@ -83,8 +86,6 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	 * not enabled).
 	 */
 	private static final long SLOW_REQUEST_THRESHOLD_MS = 3000;
-	/** What time the cache is expired, in milliSeconds. */
-	private long mCacheExpireTime;
 //=======================
 	/** The redirect url to use for 3xx http responses */
 	private String mRedirectUrl;
@@ -187,9 +188,9 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	}
 
 	/** Set the response listener. */
-//	public void setListener(Listener<T> listener) {
-//		mListener = listener;
-//	}
+	public void setListener(Listener<T> listener) {
+		mListener = listener;
+	}
 
     /**
      * @return this request's {@link com.android.volley.Response.ErrorListener}.
@@ -373,25 +374,6 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	public void setForceUpdate(boolean forceUpdate) {
 		this.mForceUpdate = forceUpdate;
 	}
-	public long getCacheExpireTime() {
-		return mCacheExpireTime;
-	}
-	/**
-	 * Set how long the cache is expired,
-	 * {@link com.duowan.mobile.netroid.cache.DiskCache} will determine the
-	 * cache entry is expired or not. For example :
-	 * Request.setCacheExpireTime(TimeUnit.MINUTES, 1); // cache stays one
-	 * minute Request.setCacheExpireTime(TimeUnit.DAYS, 2); // cache stays two
-	 * days
-	 * 
-	 * @param timeUnit
-	 *            what unit for the amount value
-	 * @param amount
-	 *            how much unit should calculate
-	 */
-	public void setCacheExpireTime(TimeUnit timeUnit, int amount) {
-		this.mCacheExpireTime = System.currentTimeMillis() + timeUnit.toMillis(amount);
-	}
 
 	/**
 	 * Mark this request as canceled. No callback will be delivered.
@@ -416,9 +398,28 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	 *             In the event of auth failure
 	 */
 	public Map<String, String> getHeaders() throws AuthFailureError {
-		return Collections.emptyMap();
+		return mHashHeaders;
 	}
 
+    //TODO .................
+	/**
+	 * Put a Header to RequestHeaders.
+	 * @param field header key
+	 * @param value header value
+	 */
+	public final void addHeader(String field, String value) {
+		// We don't accept duplicate header.
+		removeHeader(field);
+		mHashHeaders.put(field, value);
+	}
+
+	/**
+	 * Remove a header from RequestHeaders
+	 * @param field header key
+	 */
+	public final void removeHeader(String field) {
+		mHashHeaders.remove(field);
+	}
     /**
      * Returns a Map of POST parameters to be used for this request, or null if
      * a simple GET should be used.  Can throw {@link AuthFailureError} as
@@ -481,17 +482,6 @@ public abstract class Request<T> implements Comparable<Request<T>> {
         }
         return null;
     }
-
-    //TODO .................
-	/**
-	 * Remove a header from RequestHeaders
-	 * 
-	 * @param field
-	 *            header key
-	 */
-	public final void removeHeader(String field) {
-		mHashHeaders.remove(field);
-	}
 
     /**
      * Returns a Map of parameters to be used for a POST or PUT request.  Can throw
@@ -572,24 +562,24 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	public void prepare() {
 	}
 
-//	/**
-//	 * Handle the response for various request, normally, a request was a short
-//	 * and low memory-usage request, thus we can parse the response-content as
-//	 * byte[] in memory. However the
-//	 * {@link com.duowan.mobile.netroid.request.FileDownloadRequest} itself was
-//	 * a large memory-usage case, that's inadvisable for parse all response
-//	 * content to memory, so it had self-implement mechanism.
-//	 */
-//	public byte[] handleResponse(HttpResponse response, Delivery delivery) throws IOException, ServerError {
-//		// Some responses such as 204s do not have content.
-//		if (response.getEntity() != null) {
-//			return HttpUtils.responseToBytes(response);
-//		} else {
-//			// Add 0 byte response as a way of honestly representing a
-//			// no-content request.
-//			return new byte[0];
-//		}
-//	}
+	/**
+	 * Handle the response for various request, normally, a request was a short
+	 * and low memory-usage request, thus we can parse the response-content as
+	 * byte[] in memory. However the
+	 * {@link com.duowan.mobile.netroid.request.FileDownloadRequest} itself was
+	 * a large memory-usage case, that's inadvisable for parse all response
+	 * content to memory, so it had self-implement mechanism.
+	 */
+	public byte[] handleResponse(HttpResponse response, Delivery delivery) throws IOException, ServerError {
+		// Some responses such as 204s do not have content.
+		if (response.getEntity() != null) {
+			return HttpUtils.responseToBytes(response);
+		} else {
+			// Add 0 byte response as a way of honestly representing a
+			// no-content request.
+			return new byte[0];
+		}
+	}
 
 	//TODO ............
 	/**
