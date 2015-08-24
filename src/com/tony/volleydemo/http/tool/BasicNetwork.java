@@ -167,15 +167,14 @@ public class BasicNetwork implements Network {
 					request.setRedirectUrl(newUrl);
 				}
 				
-				// Some responses such as 204s do not have content. We must
-//				 check.
-				if (httpResponse.getEntity() != null) {
-					responseContents = entityToBytes(httpResponse.getEntity());
-				} else {
-					// Add 0 byte response as a way of honestly representing a
-					// no-content request.
-					responseContents = new byte[0];
-				}
+				// Some responses such as 204s do not have content. We must check. alternative by handleResponse
+//				if (httpResponse.getEntity() != null) {
+//					responseContents = entityToBytes(httpResponse.getEntity());
+//				} else {
+//					// Add 0 byte response as a way of honestly representing a
+//					// no-content request.
+//					responseContents = new byte[0];
+//				}
 				
 				// if the request is slow, log it.
 				long requestLifetime = SystemClock.elapsedRealtime() - requestStart;

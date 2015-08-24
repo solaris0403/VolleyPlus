@@ -19,8 +19,7 @@ public class HttpUtils {
 	/** Reads the contents of HttpEntity into a byte[]. */
 	public static byte[] responseToBytes(HttpResponse response) throws IOException, ServerError {
 		HttpEntity entity = response.getEntity();
-		PoolingByteArrayOutputStream bytes =
-				new PoolingByteArrayOutputStream(ByteArrayPool.get(), (int) entity.getContentLength());
+		PoolingByteArrayOutputStream bytes = new PoolingByteArrayOutputStream(ByteArrayPool.get(), (int) entity.getContentLength());
 		byte[] buffer = null;
 		try {
 			InputStream in = entity.getContent();
@@ -40,10 +39,12 @@ public class HttpUtils {
 			return bytes.toByteArray();
 		} finally {
 			try {
-				// Close the InputStream and release the resources by "consuming the content".
+				// Close the InputStream and release the resources by
+				// "consuming the content".
 				entity.consumeContent();
 			} catch (IOException e) {
-				// This can happen if there was an exception above that left the entity in
+				// This can happen if there was an exception above that left the
+				// entity in
 				// an invalid state.
 				VolleyLog.v("Error occured when calling consumingContent");
 			}

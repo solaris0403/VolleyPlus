@@ -69,9 +69,6 @@ public class NetworkResponse implements Serializable {
 	/** Raw data from this response. */
 	public final byte[] data;
 
-	/** Charset from this response. */
-	// public final String charset;
-
 	/** Response headers. */
 	public final Map<String, String> headers;
 

@@ -38,6 +38,4 @@ public class InternalUtils {
         }
         return hash;
     }
-
-
 }

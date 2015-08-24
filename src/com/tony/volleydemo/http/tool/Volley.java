@@ -49,9 +49,11 @@ public class Volley {
 	 * @param maxDiskCacheBytes
 	 *            the maximum size of the disk cache, in bytes. Use -1 for
 	 *            default size.
+	 * @param isOpenCache
+	 *            whether open disk cache.
 	 * @return A started {@link RequestQueue} instance.
 	 */
-	public static RequestQueue newRequestQueue(Context context, HttpStack stack, int maxDiskCacheBytes) {
+	public static RequestQueue newRequestQueue(Context context, HttpStack stack, int maxDiskCacheBytes, boolean isOpenCache) {
 		File cacheDir = new File(context.getCacheDir(), DEFAULT_CACHE_DIR);
 		String userAgent = "volley/0";
 		try {
@@ -72,12 +74,17 @@ public class Volley {
 		}
 		Network network = new BasicNetwork(stack);
 		RequestQueue queue;
-		if (maxDiskCacheBytes <= -1) {
-			// No maximum size specified
-			queue = new RequestQueue(new DiskCache(cacheDir), network);
+		if (isOpenCache) {
+			if (maxDiskCacheBytes <= -1) {
+				// No maximum size specified
+				queue = new RequestQueue(new DiskCache(cacheDir), network);
+			} else {
+				// Disk cache size specified
+				queue = new RequestQueue(new DiskCache(cacheDir, maxDiskCacheBytes), network);
+			}
 		} else {
-			// Disk cache size specified
-			queue = new RequestQueue(new DiskCache(cacheDir, maxDiskCacheBytes), network);
+			// No use Disk cache, usually on File download
+			queue = new RequestQueue(null, network);
 		}
 		queue.start();
 		return queue;
@@ -96,7 +103,21 @@ public class Volley {
 	 * @return A started {@link RequestQueue} instance.
 	 */
 	public static RequestQueue newRequestQueue(Context context, int maxDiskCacheBytes) {
-		return newRequestQueue(context, null, maxDiskCacheBytes);
+		return newRequestQueue(context, null, maxDiskCacheBytes, true);
+	}
+	/**
+	 * Creates a default instance of the worker pool and calls
+	 * {@link RequestQueue#start()} on it. You may set use or unused
+	 * disk cache.
+	 *
+	 * @param context
+	 *            A {@link Context} to use for creating the cache dir.
+	 * @param isOpenCache
+	 *            whether open disk cache.
+	 * @return A started {@link RequestQueue} instance.
+	 */
+	public static RequestQueue newRequestQueue(Context context, boolean isOpenCache) {
+		return newRequestQueue(context, null, -1, isOpenCache);
 	}
 
 	/**
@@ -111,7 +132,7 @@ public class Volley {
 	 * @return A started {@link RequestQueue} instance.
 	 */
 	public static RequestQueue newRequestQueue(Context context, HttpStack stack) {
-		return newRequestQueue(context, stack, -1);
+		return newRequestQueue(context, stack, -1, true);
 	}
 
 	/**

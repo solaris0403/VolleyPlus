@@ -58,7 +58,7 @@ public class JsonArrayRequest extends JsonRequest<JSONArray> {
 	 *            Listener to receive the JSON response
 	 */
 	public JsonArrayRequest(int method, String url, Listener<JSONArray> listener) {
-		super(method, url, null, listener);
+		this(method, url, null, listener);
 	}
 	/**
 	 * Creates a new request.
@@ -69,7 +69,7 @@ public class JsonArrayRequest extends JsonRequest<JSONArray> {
 	 *            Listener to receive the JSON response or error message
 	 */
 	public JsonArrayRequest(String url, Listener<JSONArray> listener) {
-		super(Method.GET, url, null, listener);
+		this(Method.GET, url, null, listener);
 	}
 
 	@Override
