@@ -1,7 +1,6 @@
 package com.tony.volleydemo;
 
 import java.io.File;
-import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -9,7 +8,6 @@ import org.json.JSONObject;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
-import android.net.http.AndroidHttpClient;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -19,24 +17,26 @@ import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
 import android.widget.TextView;
 
+import com.tony.volleydemo.http.cache.BitmapImageCache;
 import com.tony.volleydemo.http.core.Listener;
 import com.tony.volleydemo.http.core.Request.Method;
-import com.tony.volleydemo.http.core.AuthFailureError;
 import com.tony.volleydemo.http.core.RequestQueue;
 import com.tony.volleydemo.http.core.VolleyError;
+import com.tony.volleydemo.http.image.ImageLoader;
+import com.tony.volleydemo.http.image.SelfImageLoader;
 import com.tony.volleydemo.http.request.ClearCacheRequest;
-import com.tony.volleydemo.http.request.FileDownloadRequest;
 import com.tony.volleydemo.http.request.ImageRequest;
 import com.tony.volleydemo.http.request.JsonArrayRequest;
 import com.tony.volleydemo.http.request.JsonObjectRequest;
-import com.tony.volleydemo.http.request.JsonRequest;
 import com.tony.volleydemo.http.request.StringRequest;
-import com.tony.volleydemo.http.stack.HttpClientStack;
-import com.tony.volleydemo.http.stack.HttpStack;
 import com.tony.volleydemo.http.tool.FileDownloader;
+import com.tony.volleydemo.http.tool.NetworkImageView;
 import com.tony.volleydemo.http.tool.Volley;
 
 public class MainActivity extends Activity {
+	private NetworkImageView mNetworkImageView;
+	private ImageLoader mImageLoader;
+	private RequestQueue mQueue;
 	private static final String TAG = "Volley Log";
 	private ImageView mImgPic;
 	private TextView mTxtContent;
@@ -46,27 +46,42 @@ public class MainActivity extends Activity {
 	private static final String mSaveDirPath = "/sdcard/volley/";
 	FileDownloader mFileDownloader;
 	RequestQueue queue;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		queue = Volley.newRequestQueue(this,false);
+		queue = Volley.newRequestQueue(this, false);
+
+		int memoryCacheSize = 5 * 1024 * 1024; // 5MB
+
+		File diskCacheDir = new File(getCacheDir(), "netroid");
+		int diskCacheSize = 50 * 1024 * 1024; // 50MB
+
+		mQueue = Volley.newRequestQueue(getApplicationContext(), diskCacheSize);
+		mImageLoader = new SelfImageLoader(mQueue, new BitmapImageCache(memoryCacheSize), getResources(), getAssets());
+
 		mImgPic = (ImageView) findViewById(R.id.img_pic);
+		mNetworkImageView = (NetworkImageView) findViewById(R.id.img_net_pic);
 		mTxtContent = (TextView) findViewById(R.id.tv_content);
 		mBtnStart = (Button) findViewById(R.id.btn_start);
 		mBtnCLear = (Button) findViewById(R.id.btn_clear);
 		mBtnStart.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				testFileDownload(queue);
+//				testImageView();
+				// testFileDownload(queue);
+//				testHttpImageView();
+//				loadAssetsImage();
+				loadSdcardImage();
 			}
 		});
 		mBtnCLear.setOnClickListener(new OnClickListener() {
-			
+
 			@Override
 			public void onClick(View v) {
 				// TODO Auto-generated method stub
-				testClear(queue);
+				// testClear(queue);
 			}
 		});
 	}
@@ -123,13 +138,13 @@ public class MainActivity extends Activity {
 	}
 
 	private void testString(RequestQueue queue) {
-		String url = "http://route.showapi.com/341-1?showapi_appid="+app_id+"&showapi_timestamp="+"20150824101239"+"&showapi_sign="+app_secret+"&time=2015-08-24&page=1";
+		String url = "http://route.showapi.com/341-1?showapi_appid=" + app_id + "&showapi_timestamp=" + "20150824101239" + "&showapi_sign=" + app_secret + "&time=2015-08-24&page=1";
 		StringRequest request = new StringRequest(Method.GET, url, new Listener<String>() {
 
 			@Override
 			public void onSuccess(String response) {
-				Log.e(TAG, "onSuccess:"+response);
-				//mTxtContent.setText(response);
+				Log.e(TAG, "onSuccess:" + response);
+				// mTxtContent.setText(response);
 			}
 
 			@Override
@@ -182,14 +197,14 @@ public class MainActivity extends Activity {
 		});
 		queue.add(request);
 	}
-	
-	private void testJsonArray(RequestQueue queue){
+
+	private void testJsonArray(RequestQueue queue) {
 		String url = "http://stage.klp.unileverfoodsolutions.tw/v1/pointcatalog/products?per_page=30&onsale=ture&access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6ImUxd2tjNThhOXIifQ.eyJ1aWQiOiI1NTliNzYxNWZkNjA0YWI3NzY4YjQ1NjciLCJzY29wZXMiOltdLCJhcHAiOiI1NTljOGU0MWZkNjA0YTlmMTk4YjQ1NjcifQ.NzccJTxQD_yIPSaA1kghiWGc_0PKdliD691nVaLHX-g";
 		JsonArrayRequest request = new JsonArrayRequest(Method.GET, url, new Listener<JSONArray>() {
 			@Override
 			public void onSuccess(JSONArray response) {
-				Log.e(TAG, "onSuccess:"+response.toString());
-				//mTxtContent.setText(response);
+				Log.e(TAG, "onSuccess:" + response.toString());
+				// mTxtContent.setText(response);
 			}
 
 			@Override
@@ -242,17 +257,17 @@ public class MainActivity extends Activity {
 		});
 		queue.add(request);
 	}
-	
-	private void testJsonObject(RequestQueue queue){
-		String url = "http://route.showapi.com/341-1?showapi_appid="+app_id+"&showapi_timestamp="+"20150824102539"+"&showapi_sign="+app_secret+"&time=2015-08-24&page=1";
+
+	private void testJsonObject(RequestQueue queue) {
+		String url = "http://route.showapi.com/341-1?showapi_appid=" + app_id + "&showapi_timestamp=" + "20150824102539" + "&showapi_sign=" + app_secret + "&time=2015-08-24&page=1";
 		String urlB = "http://stage.klp.unileverfoodsolutions.tw/v1/pointcatalog/products?per_page=30&onsale=ture&access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6ImUxd2tjNThhOXIifQ.eyJ1aWQiOiI1NTliNzYxNWZkNjA0YWI3NzY4YjQ1NjciLCJzY29wZXMiOltdLCJhcHAiOiI1NTljOGU0MWZkNjA0YTlmMTk4YjQ1NjcifQ.NzccJTxQD_yIPSaA1kghiWGc_0PKdliD691nVaLHX-g";
 
 		JsonObjectRequest request = new JsonObjectRequest(Method.GET, urlB, null, new Listener<JSONObject>() {
 
 			@Override
 			public void onSuccess(JSONObject response) {
-				Log.e(TAG, "onSuccess:"+response.toString());
-				//mTxtContent.setText(response);
+				Log.e(TAG, "onSuccess:" + response.toString());
+				// mTxtContent.setText(response);
 			}
 
 			@Override
@@ -305,14 +320,14 @@ public class MainActivity extends Activity {
 		});
 		queue.add(request);
 	};
-	
-	private void testBitmap(RequestQueue queue){
+
+	private void testBitmap(RequestQueue queue) {
 		String url = "https://dn-appcms.qbox.me/1440152508690.png";
 		ImageRequest request = new ImageRequest(url, new Listener<Bitmap>() {
 			@Override
 			public void onSuccess(Bitmap response) {
-				Log.e(TAG, "onSuccess:"+response.getByteCount());
-				//mTxtContent.setText(response);
+				Log.e(TAG, "onSuccess:" + response.getByteCount());
+				// mTxtContent.setText(response);
 				mImgPic.setImageBitmap(response);
 			}
 
@@ -366,14 +381,14 @@ public class MainActivity extends Activity {
 		}, 0, 0, ScaleType.CENTER_CROP, Config.RGB_565);
 		queue.add(request);
 	}
-	
-	private void testClear(RequestQueue queue){
+
+	private void testClear(RequestQueue queue) {
 		ClearCacheRequest request = new ClearCacheRequest(queue.getCache(), null, new Listener<Object>() {
 
 			@Override
 			public void onSuccess(Object response) {
-				Log.e(TAG, "onSuccess:"+response.hashCode());
-				//mTxtContent.setText(response);
+				Log.e(TAG, "onSuccess:" + response.hashCode());
+				// mTxtContent.setText(response);
 			}
 
 			@Override
@@ -426,13 +441,30 @@ public class MainActivity extends Activity {
 		});
 		queue.add(request);
 	}
+
+	private void testImageView() {
+		String url = "http://upload.newhua.com/3/3e/1292303714308.jpg";
+		ImageLoader.ImageListener listener = ImageLoader.getImageListener(mImgPic, android.R.drawable.ic_menu_rotate, android.R.drawable.ic_delete);
+		mImageLoader.get(url, listener);
+	}
 	
+	private void testHttpImageView(){
+		String url = "http://upload.newhua.com/3/3e/1292303714308.jpg";
+		mNetworkImageView.setImageUrl(url, mImageLoader);
+	}
+	private void loadAssetsImage() {
+		mNetworkImageView.setImageUrl(SelfImageLoader.RES_ASSETS + "cover_16539.jpg", mImageLoader);
+	}
+	private void loadSdcardImage() {
+		mNetworkImageView.setImageUrl(SelfImageLoader.RES_SDCARD + "/sdcard/knorr/picture/1.png", mImageLoader);
+	}
+
 	@Override
 	public void finish() {
-		if (mFileDownloader!=null) {
+		if (mFileDownloader != null) {
 			mFileDownloader.clearAll();
 		}
-		if (queue!=null) {
+		if (queue != null) {
 			queue.stop();
 		}
 		super.finish();

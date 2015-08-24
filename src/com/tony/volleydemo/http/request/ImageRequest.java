@@ -85,7 +85,9 @@ public class ImageRequest extends Request<Bitmap> {
 		mMaxHeight = maxHeight;
 		mScaleType = scaleType;
 	}
-
+	public ImageRequest(String url, int maxWidth, int maxHeight) {
+		this(url, null, maxWidth, maxHeight, Config.RGB_565);
+	}
 	/**
 	 * For API compatibility with the pre-ScaleType variant of the constructor.
 	 * Equivalent to the normal constructor with {@code ScaleType.CENTER_INSIDE}

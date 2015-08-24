@@ -24,7 +24,12 @@
 
     <ImageView
         android:id="@+id/img_pic"
-        android:layout_width="200dp"
-        android:layout_height="400dp" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <com.tony.volleydemo.http.tool.NetworkImageView
+        android:id="@+id/img_net_pic"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
 
 </LinearLayout>

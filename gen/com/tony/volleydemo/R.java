@@ -16,6 +16,7 @@ public final class R {
     public static final class id {
         public static final int btn_clear=0x7f060001;
         public static final int btn_start=0x7f060000;
+        public static final int img_net_pic=0x7f060004;
         public static final int img_pic=0x7f060003;
         public static final int tv_content=0x7f060002;
     }
