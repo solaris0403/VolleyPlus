@@ -21,6 +21,16 @@ import android.graphics.Bitmap;
 import com.tony.volleydemo.http.image.ImageLoader;
 
 public class BitmapImageCache extends LruCache<String, Bitmap> implements ImageLoader.ImageCache {
+	public static int getDefaultLruCacheSize() {
+		final int maxMemory = (int) (Runtime.getRuntime().maxMemory());
+		final int cacheSize = maxMemory / 8;
+		return cacheSize;
+	}
+
+	public BitmapImageCache() {
+		this(getDefaultLruCacheSize());
+	}
+
 	public BitmapImageCache(int maxSize) {
 		super(maxSize);
 	}

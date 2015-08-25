@@ -54,7 +54,7 @@ import com.tony.volleydemo.http.core.VolleyLog;
 import com.tony.volleydemo.http.stack.HttpStack;
 
 /**
- * A network performing Netroid requests over an {@link HttpStack}.
+ * A network performing VolleyPlus requests over an {@link HttpStack}.
  */
 public class BasicNetwork implements Network {
 	protected static final boolean DEBUG = VolleyLog.DEBUG;
@@ -67,40 +67,19 @@ public class BasicNetwork implements Network {
 
 	protected final ByteArrayPool mPool;
 
-	/**
-	 * The default charset only use when response doesn't offer the Content-Type
-	 * header.
-	 */
-	// private final String mDefaultCharset;
-
 	/** Request delivery mechanism. */
 	private Delivery mDelivery;
 
 	/**
 	 * @param httpStack
 	 *            HTTP stack to be used
-	 * @param defaultCharset
-	 *            default charset if response does not provided.
 	 */
 	public BasicNetwork(HttpStack httpStack) {
-		// If a pool isn't passed in, then build a small default pool that will
-		// give us a lot of
-		// benefit and not use too much memory.
+		// If a pool isn't passed in, then build a small default pool 
+		//that will give us a lot of benefit and not use too much memory.
 		this(httpStack, new ByteArrayPool(DEFAULT_POOL_SIZE));
 	}
-
-	/**
-	 * @param httpStack
-	 *            HTTP stack to be used
-	 * @param defaultCharset
-	 *            default charset if response does not provided.
-	 */
-	// public BasicNetwork(HttpStack httpStack, String defaultCharset) {
-	// // If a pool isn't passed in, then build a small default pool that will
-	// give us a lot of
-	// // benefit and not use too much memory.
-	// this(httpStack, DEFAULT_POOL_SIZE, defaultCharset);
-	// }
+	
 	/**
 	 * @param httpStack
 	 *            HTTP stack to be used
@@ -137,8 +116,7 @@ public class BasicNetwork implements Network {
 			byte[] responseContents = null;
 			Map<String, String> responseHeaders = Collections.emptyMap();
 			try {
-				// prepare to perform this request, normally is reset the
-				// request headers.
+				// prepare to perform this request, normally is reset the request headers.
 				request.prepare();
 				// Gather headers.
 				Map<String, String> headers = new HashMap<String, String>();
