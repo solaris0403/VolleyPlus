@@ -22,6 +22,7 @@ import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.util.LruCache;
 import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
 
@@ -80,7 +81,6 @@ abstract public class ImageLoader {
 	 */
 	public interface ImageCache {
 		public Bitmap getBitmap(String url);
-
 		public void putBitmap(String url, Bitmap bitmap);
 	}
 
@@ -196,7 +196,6 @@ abstract public class ImageLoader {
 	 */
 	public boolean isCached(String requestUrl, int maxWidth, int maxHeight, ScaleType scaleType) {
 		throwIfNotOnMainThread();
-
 		String cacheKey = getCacheKey(requestUrl, maxWidth, maxHeight, scaleType);
 		return mCache.getBitmap(cacheKey) != null;
 	}
@@ -248,11 +247,11 @@ abstract public class ImageLoader {
 	public ImageContainer get(String requestUrl, ImageListener imageListener, int maxWidth, int maxHeight, ScaleType scaleType) {
 		// only fulfill requests that were initiated from the main thread.
 		throwIfNotOnMainThread();
-
+		
 		final String cacheKey = getCacheKey(requestUrl, maxWidth, maxHeight, scaleType);
-
 		// Try to look up the request in the cache of remote images.
 		Bitmap cachedBitmap = mCache.getBitmap(cacheKey);
+		
 		if (cachedBitmap != null) {
 			// Return the cached bitmap.
 			ImageContainer container = new ImageContainer(cachedBitmap, requestUrl, null, null);
@@ -563,7 +562,6 @@ abstract public class ImageLoader {
 					mBatchedResponses.clear();
 					mRunnable = null;
 				}
-
 			};
 			// Post the runnable.
 			mHandler.postDelayed(mRunnable, mBatchResponseDelayMs);

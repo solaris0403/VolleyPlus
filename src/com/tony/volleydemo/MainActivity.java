@@ -59,8 +59,46 @@ public class MainActivity extends Activity {
 		int diskCacheSize = 50 * 1024 * 1024; // 50MB
 
 		mQueue = Volley.newRequestQueue(getApplicationContext(), diskCacheSize);
-		mImageLoader = new SelfImageLoader(mQueue, new BitmapImageCache(memoryCacheSize), getResources(), getAssets());
+		mImageLoader = new SelfImageLoader(mQueue, new BitmapImageCache(), getResources(), getAssets());
 
+//		内存加载
+//		int memoryCacheSize = 5 * 1024 * 1024; // 5MB
+//		mQueue = Netroid.newRequestQueue(getApplicationContext(), null);
+//
+//		mImageLoader = new SelfImageLoader(mQueue, new BitmapImageCache(memoryCacheSize), getResources(), getAssets()) {
+//			@Override
+//			public void makeRequest(ImageRequest request) {
+//				request.setCacheExpireTime(TimeUnit.DAYS, 10);
+//			}
+//		};
+		//磁盘加载
+//		File diskCacheDir = new File(getCacheDir(), "netroid");
+//		int diskCacheSize = 50 * 1024 * 1024; // 50MB
+//		mQueue = Netroid.newRequestQueue(getApplicationContext(), new DiskCache(diskCacheDir, diskCacheSize));
+//
+//		mImageLoader = new SelfImageLoader(mQueue, null, getResources(), getAssets()) {
+//			@Override
+//			public void makeRequest(ImageRequest request) {
+//				request.setCacheExpireTime(TimeUnit.MINUTES, 10);
+//			}
+//		};
+		//双加载
+//		int memoryCacheSize = 5 * 1024 * 1024; // 5MB
+//		File diskCacheDir = new File(getCacheDir(), "netroid");
+//		int diskCacheSize = 50 * 1024 * 1024; // 50MB
+//		mQueue = Netroid.newRequestQueue(getApplicationContext(), new DiskCache(diskCacheDir, diskCacheSize));
+//		mImageLoader = new SelfImageLoader(mQueue, new BitmapImageCache(memoryCacheSize), getResources(), getAssets()) {
+//			@Override
+//			public void makeRequest(ImageRequest request) {
+//				request.setCacheExpireTime(TimeUnit.MINUTES, 1);
+//			}
+//		};
+
+		
+		
+		
+		
+		
 		mImgPic = (ImageView) findViewById(R.id.img_pic);
 		mNetworkImageView = (NetworkImageView) findViewById(R.id.img_net_pic);
 		mTxtContent = (TextView) findViewById(R.id.tv_content);
