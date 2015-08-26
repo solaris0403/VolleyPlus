@@ -14,7 +14,7 @@ import android.text.TextUtils;
 import com.tony.volleydemo.http.tool.ByteArrayPool;
 import com.tony.volleydemo.http.tool.PoolingByteArrayOutputStream;
 
-public class HttpUtils {
+public class HttpResponseUtils {
 
 	/** Reads the contents of HttpEntity into a byte[]. */
 	public static byte[] responseToBytes(HttpResponse response) throws IOException, ServerError {

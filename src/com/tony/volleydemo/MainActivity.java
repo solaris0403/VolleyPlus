@@ -1,19 +1,26 @@
 package com.tony.volleydemo;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.ImageView.ScaleType;
 import android.widget.TextView;
 
@@ -32,6 +39,7 @@ import com.tony.volleydemo.http.request.StringRequest;
 import com.tony.volleydemo.http.tool.FileDownloader;
 import com.tony.volleydemo.http.tool.NetworkImageView;
 import com.tony.volleydemo.http.tool.Volley;
+import com.tony.volleydemo.http.utils.VolleyPlus;
 
 public class MainActivity extends Activity {
 	private NetworkImageView mNetworkImageView;
@@ -45,21 +53,21 @@ public class MainActivity extends Activity {
 	private String app_secret = "470e425009b0403583a5161cb4ca7985";
 	private static final String mSaveDirPath = "/sdcard/volley/";
 	FileDownloader mFileDownloader;
-	RequestQueue queue;
-
+	String[] urls = new String[200];
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		queue = Volley.newRequestQueue(this, false);
+//		queue = Volley.newRequestQueue(this, false);
+//
+//		int memoryCacheSize = 5 * 1024 * 1024; // 5MB
+//
+//		File diskCacheDir = new File(getCacheDir(), "netroid");
+//		int diskCacheSize = 50 * 1024 * 1024; // 50MB
 
-		int memoryCacheSize = 5 * 1024 * 1024; // 5MB
-
-		File diskCacheDir = new File(getCacheDir(), "netroid");
-		int diskCacheSize = 50 * 1024 * 1024; // 50MB
-
-		mQueue = Volley.newRequestQueue(getApplicationContext(), diskCacheSize);
-		mImageLoader = new SelfImageLoader(mQueue, new BitmapImageCache(), getResources(), getAssets());
+//		mQueue = Volley.newRequestQueue(getApplicationContext(), diskCacheSize);
+//		mImageLoader = new SelfImageLoader(mQueue, new BitmapImageCache(), getResources(), getAssets());
 
 //		内存加载
 //		int memoryCacheSize = 5 * 1024 * 1024; // 5MB
@@ -95,7 +103,7 @@ public class MainActivity extends Activity {
 //		};
 
 		
-		
+		testListView();
 		
 		
 		
@@ -107,11 +115,13 @@ public class MainActivity extends Activity {
 		mBtnStart.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
+				load();
 //				testImageView();
 				// testFileDownload(queue);
 //				testHttpImageView();
 //				loadAssetsImage();
-				loadSdcardImage();
+//				loadSdcardImage();
+//				testJsonArray();
 			}
 		});
 		mBtnCLear.setOnClickListener(new OnClickListener() {
@@ -122,6 +132,9 @@ public class MainActivity extends Activity {
 				// testClear(queue);
 			}
 		});
+		
+		
+		
 	}
 
 	private void testFileDownload(final RequestQueue queue) {
@@ -236,13 +249,13 @@ public class MainActivity extends Activity {
 		queue.add(request);
 	}
 
-	private void testJsonArray(RequestQueue queue) {
-		String url = "http://stage.klp.unileverfoodsolutions.tw/v1/pointcatalog/products?per_page=30&onsale=ture&access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImtpZCI6ImUxd2tjNThhOXIifQ.eyJ1aWQiOiI1NTliNzYxNWZkNjA0YWI3NzY4YjQ1NjciLCJzY29wZXMiOltdLCJhcHAiOiI1NTljOGU0MWZkNjA0YTlmMTk4YjQ1NjcifQ.NzccJTxQD_yIPSaA1kghiWGc_0PKdliD691nVaLHX-g";
+	private void testJsonArray() {
+		String url = "http://api.androidhive.info/volley/person_array.json";
 		JsonArrayRequest request = new JsonArrayRequest(Method.GET, url, new Listener<JSONArray>() {
 			@Override
 			public void onSuccess(JSONArray response) {
 				Log.e(TAG, "onSuccess:" + response.toString());
-				// mTxtContent.setText(response);
+				 mTxtContent.setText(response.toString());
 			}
 
 			@Override
@@ -293,7 +306,7 @@ public class MainActivity extends Activity {
 				super.onUsedCache();
 			}
 		});
-		queue.add(request);
+		VolleyPlus.addToRequestQueue(request);
 	}
 
 	private void testJsonObject(RequestQueue queue) {
@@ -482,13 +495,14 @@ public class MainActivity extends Activity {
 
 	private void testImageView() {
 		String url = "http://upload.newhua.com/3/3e/1292303714308.jpg";
-		ImageLoader.ImageListener listener = ImageLoader.getImageListener(mImgPic, android.R.drawable.ic_menu_rotate, android.R.drawable.ic_delete);
-		mImageLoader.get(url, listener);
+//		ImageLoader.ImageListener listener = ImageLoader.getImageListener(mImgPic, android.R.drawable.ic_menu_rotate, android.R.drawable.ic_delete);
+//		mImageLoader.get(url, listener);
+		VolleyPlus.load(mImgPic, url, 0, 0);
 	}
 	
 	private void testHttpImageView(){
 		String url = "http://upload.newhua.com/3/3e/1292303714308.jpg";
-		mNetworkImageView.setImageUrl(url, mImageLoader);
+		mNetworkImageView.setImageUrl(url, VolleyPlus.getImageLoader());
 	}
 	private void loadAssetsImage() {
 		mNetworkImageView.setImageUrl(SelfImageLoader.RES_ASSETS + "cover_16539.jpg", mImageLoader);
@@ -502,9 +516,68 @@ public class MainActivity extends Activity {
 		if (mFileDownloader != null) {
 			mFileDownloader.clearAll();
 		}
-		if (queue != null) {
-			queue.stop();
-		}
 		super.finish();
+	}
+	
+	
+	
+	private void testListView(){
+		for (int i = 0; i < 200; i++) {
+			if (0==i%2) {
+				urls[i] = "http://upload.newhua.com/3/3e/1292303714308.jpg";
+			}else {
+				urls[i] = "http://img05.tooopen.com/images/20150729/tooopen_sy_135912171182.jpg";
+			}
+		}
+	}
+	
+	private void load(){
+		ListView listView = (ListView) findViewById(R.id.listview);
+		listView.setAdapter(new MyAdapter(MainActivity.this, urls));
+	}
+	
+	
+	
+	
+	class MyAdapter extends BaseAdapter{
+		Context mContext;
+		String[] urlStrings;
+		public MyAdapter(Context context, String[] url) {
+			mContext = context;
+			urlStrings = url;
+		}
+		@Override
+		public int getCount() {
+			return urlStrings.length;
+		}
+
+		@Override
+		public Object getItem(int position) {
+			return urlStrings[position];
+		}
+
+		@Override
+		public long getItemId(int position) {
+			return urlStrings[position].hashCode();
+		}
+
+		@Override
+		public View getView(int position, View convertView, ViewGroup parent) {
+			ViewHolder holder;
+			if (convertView == null) {
+				holder = new ViewHolder();
+				convertView = LayoutInflater.from(mContext).inflate(R.layout.item_view, null);
+				holder.mView = (ImageView) convertView.findViewById(R.id.img_view);
+				convertView.setTag(holder);
+			}else {
+				holder = (ViewHolder) convertView.getTag();
+			}
+			VolleyPlus.load(holder.mView, urlStrings[position], 0, 0);
+			return convertView;
+		}
+		
+		class ViewHolder{
+			ImageView mView;
+		}
 	}
 }

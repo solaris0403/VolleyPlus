@@ -1,12 +1,19 @@
 package com.tony.volleydemo.http.utils;
 
+import java.util.concurrent.TimeUnit;
+
+import android.R.integer;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.widget.ImageView;
 
+import com.tony.volleydemo.http.cache.BitmapImageCache;
 import com.tony.volleydemo.http.cache.LruCache;
 import com.tony.volleydemo.http.core.Request;
 import com.tony.volleydemo.http.core.RequestQueue;
 import com.tony.volleydemo.http.image.ImageLoader;
+import com.tony.volleydemo.http.image.SelfImageLoader;
+import com.tony.volleydemo.http.request.ImageRequest;
 import com.tony.volleydemo.http.tool.Volley;
 
 /**
@@ -16,7 +23,9 @@ import com.tony.volleydemo.http.tool.Volley;
 public class VolleyPlus {
 	private static Context mContext;
 	private static RequestQueue mRequestQueue;
-	private ImageLoader mImageLoader;
+	private static ImageLoader mImageLoader;
+	private int mDefaultImage;
+	private int mErrorImage;
 
 	private VolleyPlus(Context context) {
 	}
@@ -44,31 +53,36 @@ public class VolleyPlus {
 
 	public static RequestQueue getRequestQueue() {
 		if (mRequestQueue == null) {
-				mRequestQueue = Volley.newRequestQueue(mContext.getApplicationContext());
+			mRequestQueue = Volley.newRequestQueue(mContext.getApplicationContext());
 		}
 		return mRequestQueue;
+	}
+
+	public static void cancelPendingRequests(Object tag) {
+		if (mRequestQueue != null) {
+			mRequestQueue.cancelAll(tag);
+		}
 	}
 
 	public static <T> void addToRequestQueue(Request<T> req) {
 		getRequestQueue().add(req);
 	}
 
-	public ImageLoader getImageLoader() {
+	public static ImageLoader getImageLoader() {
+		if (mImageLoader == null) {
+			mImageLoader = new SelfImageLoader(getRequestQueue(), new BitmapImageCache(), mContext.getResources(), mContext.getAssets()){
+				@Override
+				public void makeRequest(ImageRequest request) {
+					super.makeRequest(request);
+				//	request.setCacheExpireTime(TimeUnit.MINUTES, 10);
+				}
+			};
+		}
 		return mImageLoader;
 	}
 
-	// =========================开放的方法
-
-	/**
-	 * VolleyPlus setting class
-	 * 
-	 * @author user
-	 *
-	 */
-	public static class VolleyPlusConfig {
-		private int NETWORK_THREADPOOL_SIZE = 4;
-		private String CACHE_FILEDIR_NAME = "volleyplus";
-		private int CACHE_FILE_SIZE = 5 * 1024 * 1024;
-		private boolean ISOPENCACHE = true;
+	public static void load(ImageView imageView, String url, int defaultImageResId, int errorImageResId ){
+		ImageLoader.ImageListener listener = ImageLoader.getImageListener(imageView, defaultImageResId, errorImageResId);
+		getImageLoader().get(url, listener);
 	}
 }

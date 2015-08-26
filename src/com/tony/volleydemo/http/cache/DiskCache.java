@@ -110,7 +110,7 @@ public class DiskCache implements Cache {
 	 * otherwise.
 	 */
 	@Override
-	public synchronized Entry get(String key) {
+	public synchronized Entry getEntry(String key) {
 		CacheHeader entry = mEntries.get(key);
 		// if the entry does not exist, return.
 		if (entry == null) {
@@ -126,11 +126,11 @@ public class DiskCache implements Cache {
 			return entry.toCacheEntry(data);
 		} catch (IOException e) {
 			VolleyLog.d("%s: %s", file.getAbsolutePath(), e.toString());
-			remove(key);
+			removeEntry(key);
 			return null;
 		} catch (NegativeArraySizeException e) {
 			VolleyLog.d("%s: %s", file.getAbsolutePath(), e.toString());
-			remove(key);
+			removeEntry(key);
 			return null;
 		} finally {
 			if (cis != null) {
@@ -192,22 +192,37 @@ public class DiskCache implements Cache {
 	 */
 	@Override
 	public synchronized void invalidate(String key, boolean fullExpire) {
-		Entry entry = get(key);
+		Entry entry = getEntry(key);
 		if (entry != null) {
 			entry.softTtl = 0;
 			if (fullExpire) {
 				entry.ttl = 0;
 			}
-			put(key, entry);
+			putEntry(key, entry);
 		}
 
 	}
 
 	/**
+	 * Invalidates an entry in the cache.
+	 * 
+	 * @param key
+	 *            Cache key
+	 * @param expireTime
+	 *            The new expireTime
+	 */
+//	public synchronized void invalidate(String key, long expireTime) {
+//		Entry entry = getEntry(key);
+//		if (Entry.invalidate(entry, expireTime)) {
+//			putEntry(key, entry);
+//		}
+//	}
+
+	/**
 	 * Puts the entry with the specified key into the cache.
 	 */
 	@Override
-	public synchronized void put(String key, Entry entry) {
+	public synchronized void putEntry(String key, Entry entry) {
 		pruneIfNeeded(entry.data.length);
 		File file = getFileForKey(key);
 		try {
@@ -235,9 +250,14 @@ public class DiskCache implements Cache {
 	 * Removes the specified key from the cache if it exists.
 	 */
 	@Override
-	public synchronized void remove(String key) {
+	public synchronized void removeEntry(String key) {
 		boolean deleted = getFileForKey(key).delete();
-		removeEntry(key);
+		// Removes the entry identified by 'key' from the cache.
+		CacheHeader entry = mEntries.get(key);
+		if (entry != null) {
+			mTotalSize -= entry.size;
+			mEntries.remove(key);
+		}
 		if (!deleted) {
 			VolleyLog.d("Could not delete cache entry for key=%s, filename=%s", key, getFilenameForKey(key));
 		}
@@ -324,17 +344,6 @@ public class DiskCache implements Cache {
 	}
 
 	/**
-	 * Removes the entry identified by 'key' from the cache.
-	 */
-	private void removeEntry(String key) {
-		CacheHeader entry = mEntries.get(key);
-		if (entry != null) {
-			mTotalSize -= entry.size;
-			mEntries.remove(key);
-		}
-	}
-
-	/**
 	 * Reads the contents of an InputStream into a byte[].
 	 * */
 	private static byte[] streamToBytes(InputStream in, int length) throws IOException {
@@ -363,7 +372,8 @@ public class DiskCache implements Cache {
 
 		/** The key that identifies the cache entry. */
 		public String key;
-
+		/** Expire time for cache entry. */
+	//	public long expireTime;
 		/** ETag for cache coherence. */
 		public String etag;
 
@@ -402,6 +412,7 @@ public class DiskCache implements Cache {
 			this.ttl = entry.ttl;
 			this.softTtl = entry.softTtl;
 			this.responseHeaders = entry.responseHeaders;
+			//this.expireTime = entry.expireTime;
 		}
 
 		/**
@@ -429,7 +440,7 @@ public class DiskCache implements Cache {
 			entry.ttl = readLong(is);
 			entry.softTtl = readLong(is);
 			entry.responseHeaders = readStringStringMap(is);
-
+		//	entry.expireTime = readLong(is);
 			return entry;
 		}
 
@@ -445,9 +456,15 @@ public class DiskCache implements Cache {
 			e.ttl = ttl;
 			e.softTtl = softTtl;
 			e.responseHeaders = responseHeaders;
+		//	e.expireTime = expireTime;
 			return e;
 		}
-
+		
+		/** True if the entry is expired. */
+		public boolean isExpired() {
+			return this.ttl < System.currentTimeMillis();
+		}
+		
 		/**
 		 * Writes the contents of this CacheHeader to the specified
 		 * OutputStream.
@@ -461,6 +478,7 @@ public class DiskCache implements Cache {
 				writeLong(os, lastModified);
 				writeLong(os, ttl);
 				writeLong(os, softTtl);
+			//	writeLong(os, expireTime);
 				writeStringStringMap(responseHeaders, os);
 				os.flush();
 				return true;

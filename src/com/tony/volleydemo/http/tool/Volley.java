@@ -34,7 +34,7 @@ import com.tony.volleydemo.http.stack.HurlStack;
 public class Volley {
 
 	/** Default on-disk cache directory. */
-	private static final String DEFAULT_CACHE_DIR = "volleyplus";
+	private static final String DEFAULT_CACHE_DIR = "volley";
 
 	/**
 	 * Creates a default instance of the worker pool and calls

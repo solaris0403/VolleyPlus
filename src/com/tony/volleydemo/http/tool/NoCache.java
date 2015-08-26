@@ -27,12 +27,12 @@ public class NoCache implements Cache {
 	}
 
 	@Override
-	public Entry get(String key) {
+	public Entry getEntry(String key) {
 		return null;
 	}
 
 	@Override
-	public void put(String key, Entry entry) {
+	public void putEntry(String key, Entry entry) {
 	}
 
 	@Override
@@ -40,7 +40,7 @@ public class NoCache implements Cache {
 	}
 
 	@Override
-	public void remove(String key) {
+	public void removeEntry(String key) {
 	}
 
 	@Override

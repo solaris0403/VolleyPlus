@@ -14,7 +14,7 @@ import android.text.TextUtils;
 
 import com.tony.volleydemo.http.core.DefaultRetryPolicy;
 import com.tony.volleydemo.http.core.Delivery;
-import com.tony.volleydemo.http.core.HttpUtils;
+import com.tony.volleydemo.http.core.HttpResponseUtils;
 import com.tony.volleydemo.http.core.NetworkResponse;
 import com.tony.volleydemo.http.core.Request;
 import com.tony.volleydemo.http.core.Response;
@@ -101,14 +101,14 @@ public class FileDownloadRequest extends Request<Void> {
 		}
 
 		long downloadedSize = mTemporaryFile.length();
-		boolean isSupportRange = HttpUtils.isSupportRange(response);
+		boolean isSupportRange = HttpResponseUtils.isSupportRange(response);
 		if (isSupportRange) {
 			fileSize += downloadedSize;
 
 			// Verify the Content-Range Header, to ensure temporary file is part of the whole file.
 			// Sometime, temporary file length add response content-length might greater than actual file length,
 			// in this situation, we consider the temporary file is invalid, then throw an exception.
-			String realRangeValue = HttpUtils.getHeader(response, "Content-Range");
+			String realRangeValue = HttpResponseUtils.getHeader(response, "Content-Range");
 			// response Content-Range may be null when "Range=bytes=0-"
 			if (!TextUtils.isEmpty(realRangeValue)) {
 				String assumeRangeValue = "bytes " + downloadedSize + "-" + (fileSize - 1);
@@ -147,7 +147,7 @@ public class FileDownloadRequest extends Request<Void> {
 		try {
 			InputStream in = entity.getContent();
 			// Determine the response gzip encoding, support for HttpClientStack download.
-			if (HttpUtils.isGzipContent(response) && !(in instanceof GZIPInputStream)) {
+			if (HttpResponseUtils.isGzipContent(response) && !(in instanceof GZIPInputStream)) {
 				in = new GZIPInputStream(in);
 			}
 			byte[] buffer = new byte[6 * 1024]; // 6K buffer

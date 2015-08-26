@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.TimeUnit;
 
 import android.content.res.AssetManager;
 import android.content.res.Resources;
@@ -33,7 +34,7 @@ public class SelfImageLoader extends ImageLoader {
 	}
 
 	public void makeRequest(ImageRequest request) {
-		// request.setCacheExpireTime(TimeUnit.MINUTES, 10);
+	//	 request.setCacheExpireTime(TimeUnit.MINUTES, 10);
 	}
 
 	public static byte[] toBytes(InputStream is) throws IOException {

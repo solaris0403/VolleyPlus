@@ -28,14 +28,14 @@ public interface Cache {
      * @param key Cache key
      * @return An {@link Entry} or null in the event of a cache miss
      */
-    public Entry get(String key);
+    public Entry getEntry(String key);
 
     /**
      * Adds or replaces an entry to the cache.
      * @param key Cache key
      * @param entry Data to store and metadata for cache coherency, TTL, etc.
      */
-    public void put(String key, Entry entry);
+    public void putEntry(String key, Entry entry);
 
     /**
      * Performs any potentially long-running actions needed to initialize the cache;
@@ -54,7 +54,7 @@ public interface Cache {
      * Removes an entry from the cache.
      * @param key Cache key
      */
-    public void remove(String key);
+    public void removeEntry(String key);
 
     /**
      * Empties the cache.
@@ -82,7 +82,10 @@ public interface Cache {
 
         /** Soft TTL for this record. */
         public long softTtl;
-
+        
+		/** Expire time for cache entry. */
+	//	public long expireTime;
+		
         /** Immutable response headers as received from server; must be non-null. */
         public Map<String, String> responseHeaders = Collections.emptyMap();
 
@@ -95,6 +98,15 @@ public interface Cache {
         public boolean refreshNeeded() {
             return this.softTtl < System.currentTimeMillis();
         }
+        
+		/** Invalidate cache entry by the expireTime. */
+//		public static boolean invalidate(Entry entry, long expireTime) {
+//			if (entry != null) {
+//				//entry.expireTime = expireTime;
+//				return true;
+//			}
+//			return false;
+//		}
     }
    
 

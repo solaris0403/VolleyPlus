@@ -107,7 +107,7 @@ public class CacheDispatcher extends Thread {
 				}
 
 				// Attempt to retrieve this item from cache.
-				DiskCache.Entry entry = mCache != null ? mCache.get(request.getCacheKey()) : null;
+				DiskCache.Entry entry = mCache != null ? mCache.getEntry(request.getCacheKey()) : null;
 				if (entry == null) {
 					request.addMarker("cache-miss");
 					// Cache miss; send off to the network dispatcher.
@@ -170,5 +170,4 @@ public class CacheDispatcher extends Thread {
 			}
 		}
 	}
-
 }
