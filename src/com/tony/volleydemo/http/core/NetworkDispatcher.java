@@ -24,6 +24,7 @@ import android.os.Build;
 import android.os.Process;
 import android.os.SystemClock;
 
+import com.tony.volleydemo.http.cache.Cache;
 import com.tony.volleydemo.http.cache.DiskCache;
 
 /**
@@ -42,7 +43,7 @@ public class NetworkDispatcher extends Thread {
 	/** The network interface for processing requests. */
 	private final Network mNetwork;
 	/** The cache to write to. */
-	private final DiskCache mCache;
+	private final Cache mCache;
 	/** For posting responses and errors. */
 	private final Delivery mDelivery;
 	/** Used for telling us to die. */
@@ -61,7 +62,7 @@ public class NetworkDispatcher extends Thread {
 	 * @param delivery
 	 *            Delivery interface to use for posting responses
 	 */
-	public NetworkDispatcher(BlockingQueue<Request<?>> queue, Network network, DiskCache cache, Delivery delivery) {
+	public NetworkDispatcher(BlockingQueue<Request<?>> queue, Network network, Cache cache, Delivery delivery) {
 		mQueue = queue;
 		mCache = cache;
 		mNetwork = network;

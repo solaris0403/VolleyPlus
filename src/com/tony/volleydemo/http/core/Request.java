@@ -19,10 +19,8 @@ package com.tony.volleydemo.http.core;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.http.HttpResponse;
 
@@ -49,6 +47,8 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	 * {@link #getParamsEncoding()}.
 	 */
 	private static final String DEFAULT_PARAMS_ENCODING = "UTF-8";
+
+	//手动设置一个请求的过期时间
 	//private static final long DEFAULT_EXPIRE_TIME = TimeUnit.HOURS.toMillis(12);
 
 	/**
@@ -74,54 +74,35 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	 * DELETE, HEAD, OPTIONS, TRACE, and PATCH.
 	 */
 	private final int mMethod;
-
 	/** URL of this request. */
 	private final String mUrl;
-	// =======================
-	/** The additional headers. */
-	private HashMap<String, String> mHashHeaders;
-	/** perform request directly, ignore which caches should be used. */
-	private boolean mForceUpdate;
-	/** A cheap variant of request tracing used to dump slow requests. */
-	private long mRequestBirthTime = 0;
-	/** What time the cache is expired, in milliSeconds. */
-	//private long mCacheExpireTime;
 	/**
 	 * Threshold at which we should log the request (even when debug logging is
 	 * not enabled).
 	 */
 	private static final long SLOW_REQUEST_THRESHOLD_MS = 3000;
-	// =======================
 	/** The redirect url to use for 3xx http responses */
 	private String mRedirectUrl;
-
 	/** The unique identifier of the request */
 	private String mIdentifier;
-
 	/** Default tag for {@link TrafficStats}. */
 	private final int mDefaultTrafficStatsTag;
-
-	/** Listener interface for response and error. */
-	private Listener<T> mListener;
-
+	/** An opaque token tagging this request; used for bulk cancellation. */
+	private Object mTag;
 	/** Sequence number of this request, used to enforce FIFO ordering. */
 	private Integer mSequence;
-
-	/** The request queue this request is associated with. */
-	private RequestQueue mRequestQueue;
-
 	/** Whether or not responses to this request should be cached. */
 	private boolean mShouldCache = true;
-
 	/** Whether or not this request has been canceled. */
 	private boolean mCanceled = false;
-
 	/** Whether or not a response has been delivered for this request yet. */
 	private boolean mResponseDelivered = false;
-
+	/** Listener interface for response and error. */
+	private Listener<T> mListener;
+	/** The request queue this request is associated with. */
+	private RequestQueue mRequestQueue;
 	/** The retry policy for this request. */
 	private RetryPolicy mRetryPolicy;
-
 	/**
 	 * When a request can be retrieved from cache but must be refreshed from the
 	 * network, the cache entry will be stored here so that in the event of a
@@ -129,24 +110,20 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	 * cache.
 	 */
 	private Cache.Entry mCacheEntry = null;
+	/** A cheap variant of request tracing used to dump slow requests. */
+	// 用于转储慢的请求。
+	private long mRequestBirthTime = 0;
+	
+	
+	// =======================
+	/** The additional headers. */
+	private HashMap<String, String> mHashHeaders;
+	/** perform request directly, ignore which caches should be used. */
+	private boolean mForceUpdate;
+	/** What time the cache is expired, in milliSeconds. */
+	// private long mCacheExpireTime;
+	// =======================
 
-	/** An opaque token tagging this request; used for bulk cancellation. */
-	private Object mTag;
-
-	/**
-	 * Creates a new request with the given URL and error listener. Note that
-	 * the normal response listener is not provided here as delivery of
-	 * responses is provided by subclasses, who have a better idea of how to
-	 * deliver an already-parsed response.
-	 *
-	 * @deprecated Use
-	 *             {@link #Request(int, String, com.android.volley.Response.ErrorListener)}
-	 *             .
-	 */
-	@Deprecated
-	public Request(String url, Listener<T> listener) {
-		this(Method.DEPRECATED_GET_OR_POST, url, listener);
-	}
 
 	/**
 	 * Creates a new request with the given method (one of the values from
@@ -162,6 +139,7 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		mIdentifier = createIdentifier(method, url);
 		// TODO mHashHeaders
 		mHashHeaders = new HashMap<String, String>();
+		//setListener(listener);
 		setRetryPolicy(new DefaultRetryPolicy());
 		mDefaultTrafficStatsTag = findDefaultTrafficStatsTag(url);
 	}
@@ -193,7 +171,7 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	public Object getTag() {
 		return mTag;
 	}
-
+	
 	/** Set the response listener. */
 	public void setListener(Listener<T> listener) {
 		mListener = listener;
@@ -384,9 +362,9 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 		this.mForceUpdate = forceUpdate;
 	}
 
-//	public long getCacheExpireTime() {
-//		return mCacheExpireTime;
-//	}
+	// public long getCacheExpireTime() {
+	// return mCacheExpireTime;
+	// }
 
 	/**
 	 * Set how long the cache is expired,
@@ -401,9 +379,10 @@ public abstract class Request<T> implements Comparable<Request<T>> {
 	 * @param amount
 	 *            how much unit should calculate
 	 */
-//	public void setCacheExpireTime(TimeUnit timeUnit, int amount) {
-//		this.mCacheExpireTime = System.currentTimeMillis() + timeUnit.toMillis(amount);
-//	}
+	// public void setCacheExpireTime(TimeUnit timeUnit, int amount) {
+	// this.mCacheExpireTime = System.currentTimeMillis() +
+	// timeUnit.toMillis(amount);
+	// }
 
 	/**
 	 * Mark this request as canceled. No callback will be delivered.

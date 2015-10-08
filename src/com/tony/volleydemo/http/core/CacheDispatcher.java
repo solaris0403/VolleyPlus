@@ -20,6 +20,7 @@ import java.util.concurrent.BlockingQueue;
 
 import android.os.Process;
 
+import com.tony.volleydemo.http.cache.Cache;
 import com.tony.volleydemo.http.cache.DiskCache;
 
 /**
@@ -41,7 +42,7 @@ public class CacheDispatcher extends Thread {
 	private final BlockingQueue<Request<?>> mNetworkQueue;
 
 	/** The cache to read from. */
-	private final DiskCache mCache;
+	private final Cache mCache;
 
 	/** For posting responses. */
 	private final Delivery mDelivery;
@@ -62,7 +63,7 @@ public class CacheDispatcher extends Thread {
 	 * @param delivery
 	 *            Delivery interface to use for posting responses
 	 */
-	public CacheDispatcher(BlockingQueue<Request<?>> cacheQueue, BlockingQueue<Request<?>> networkQueue, DiskCache cache, Delivery delivery) {
+	public CacheDispatcher(BlockingQueue<Request<?>> cacheQueue, BlockingQueue<Request<?>> networkQueue, Cache cache, Delivery delivery) {
 		mCacheQueue = cacheQueue;
 		mNetworkQueue = networkQueue;
 		mCache = cache;

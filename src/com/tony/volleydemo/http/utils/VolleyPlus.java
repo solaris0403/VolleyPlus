@@ -1,14 +1,9 @@
 package com.tony.volleydemo.http.utils;
 
-import java.util.concurrent.TimeUnit;
-
-import android.R.integer;
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.widget.ImageView;
 
 import com.tony.volleydemo.http.cache.BitmapImageCache;
-import com.tony.volleydemo.http.cache.LruCache;
 import com.tony.volleydemo.http.core.Request;
 import com.tony.volleydemo.http.core.RequestQueue;
 import com.tony.volleydemo.http.image.ImageLoader;
@@ -24,8 +19,6 @@ public class VolleyPlus {
 	private static Context mContext;
 	private static RequestQueue mRequestQueue;
 	private static ImageLoader mImageLoader;
-	private int mDefaultImage;
-	private int mErrorImage;
 
 	private VolleyPlus(Context context) {
 	}

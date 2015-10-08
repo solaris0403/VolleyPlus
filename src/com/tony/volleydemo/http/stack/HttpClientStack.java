@@ -41,8 +41,6 @@ import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HTTP;
 
-import android.net.http.AndroidHttpClient;
-
 import com.tony.volleydemo.http.core.AuthFailureError;
 import com.tony.volleydemo.http.core.Request;
 import com.tony.volleydemo.http.core.Request.Method;

@@ -86,7 +86,7 @@ public class RequestQueue {
 	public static final int DEFAULT_NETWORK_THREAD_POOL_SIZE = 4;
 	
 	/** Disk cache for retrieving and storing responses. */
-	private final DiskCache mCache;
+	private final Cache mCache;
 
 	/** Network interface for performing requests. */
 	private final Network mNetwork;
@@ -94,10 +94,10 @@ public class RequestQueue {
 	/** Request delivery mechanism. */
 	private final Delivery mDelivery;
 
-	/** The network dispatchers. */
+	/** The network dispatchers. 里面存放4条网络调度线程*/
 	private NetworkDispatcher[] mDispatchers;
 
-	/** The cache dispatcher. */
+	/** The cache dispatcher. 一条缓存调度线程*/
 	private CacheDispatcher mCacheDispatcher;
 	
 	private List<RequestFinishedListener> mFinishedListeners = new ArrayList<RequestFinishedListener>();

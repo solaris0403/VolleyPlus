@@ -36,8 +36,6 @@ import android.os.SystemClock;
 
 import com.tony.volleydemo.http.core.VolleyLog;
 
-;
-
 /**
  * LruCache implementation that caches files directly onto the hard disk in the
  * specified directory. The default disk usage size is 5MB, but is configurable.
@@ -144,7 +142,7 @@ public class DiskCache implements Cache {
 	}
 
 	/**
-	 * Initializes the DiskBasedCache by scanning for all files currently in the
+	 * Initializes the DiskCache by scanning for all files currently in the
 	 * specified root directory. Creates the root directory if necessary.
 	 */
 	@Override
@@ -211,12 +209,12 @@ public class DiskCache implements Cache {
 	 * @param expireTime
 	 *            The new expireTime
 	 */
-//	public synchronized void invalidate(String key, long expireTime) {
-//		Entry entry = getEntry(key);
-//		if (Entry.invalidate(entry, expireTime)) {
-//			putEntry(key, entry);
-//		}
-//	}
+	// public synchronized void invalidate(String key, long expireTime) {
+	// Entry entry = getEntry(key);
+	// if (Entry.invalidate(entry, expireTime)) {
+	// putEntry(key, entry);
+	// }
+	// }
 
 	/**
 	 * Puts the entry with the specified key into the cache.
@@ -373,7 +371,7 @@ public class DiskCache implements Cache {
 		/** The key that identifies the cache entry. */
 		public String key;
 		/** Expire time for cache entry. */
-	//	public long expireTime;
+		// public long expireTime;
 		/** ETag for cache coherence. */
 		public String etag;
 
@@ -412,7 +410,7 @@ public class DiskCache implements Cache {
 			this.ttl = entry.ttl;
 			this.softTtl = entry.softTtl;
 			this.responseHeaders = entry.responseHeaders;
-			//this.expireTime = entry.expireTime;
+			// this.expireTime = entry.expireTime;
 		}
 
 		/**
@@ -440,7 +438,7 @@ public class DiskCache implements Cache {
 			entry.ttl = readLong(is);
 			entry.softTtl = readLong(is);
 			entry.responseHeaders = readStringStringMap(is);
-		//	entry.expireTime = readLong(is);
+			// entry.expireTime = readLong(is);
 			return entry;
 		}
 
@@ -456,15 +454,15 @@ public class DiskCache implements Cache {
 			e.ttl = ttl;
 			e.softTtl = softTtl;
 			e.responseHeaders = responseHeaders;
-		//	e.expireTime = expireTime;
+			// e.expireTime = expireTime;
 			return e;
 		}
-		
+
 		/** True if the entry is expired. */
 		public boolean isExpired() {
 			return this.ttl < System.currentTimeMillis();
 		}
-		
+
 		/**
 		 * Writes the contents of this CacheHeader to the specified
 		 * OutputStream.
@@ -478,7 +476,7 @@ public class DiskCache implements Cache {
 				writeLong(os, lastModified);
 				writeLong(os, ttl);
 				writeLong(os, softTtl);
-			//	writeLong(os, expireTime);
+				// writeLong(os, expireTime);
 				writeStringStringMap(responseHeaders, os);
 				os.flush();
 				return true;

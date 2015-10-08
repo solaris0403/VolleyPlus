@@ -13,27 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.tony.volleydemo.http.cache;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * This class copy from android support v4. Static library version of
- * {@link android.util.LruCache}. Used to write apps that run on API levels
- * prior to 12. When running on API level 12 or above, this implementation is
- * still used; it does not try to switch to the framework's implementation. See
- * the framework SDK documentation for a class overview.
+ * Static library version of {@link android.util.LruCache}. Used to write apps
+ * that run on API levels prior to 12. When running on API level 12 or above,
+ * this implementation is still used; it does not try to switch to the
+ * framework's implementation. See the framework SDK documentation for a class
+ * overview.
  */
 public class LruCache<K, V> {
 	private final LinkedHashMap<K, V> map;
+
 	/** Size of this cache in units. Not necessarily the number of elements. */
 	private int size;
 	private int maxSize;
 
 	private int putCount;
 	private int createCount;
-	private int evictionCount;
+	private int evictionCount;// 回收的次数
 	private int hitCount;
 	private int missCount;
 
@@ -50,6 +52,22 @@ public class LruCache<K, V> {
 		}
 		this.maxSize = maxSize;
 		this.map = new LinkedHashMap<K, V>(0, 0.75f, true);
+	}
+
+	/**
+	 * Sets the size of the cache.
+	 *
+	 * @param maxSize
+	 *            The new maximum size.
+	 */
+	public void resize(int maxSize) {
+		if (maxSize <= 0) {
+			throw new IllegalArgumentException("maxSize <= 0");
+		}
+		synchronized (this) {
+			this.maxSize = maxSize;
+		}
+		trimToSize(maxSize);
 	}
 
 	/**
@@ -136,11 +154,14 @@ public class LruCache<K, V> {
 	}
 
 	/**
+	 * Remove the eldest entries until the total of remaining entries is at or
+	 * below the requested size.
+	 *
 	 * @param maxSize
 	 *            the maximum size of the cache before returning. May be -1 to
 	 *            evict even 0-sized elements.
 	 */
-	private void trimToSize(int maxSize) {
+	public void trimToSize(int maxSize) {
 		while (true) {
 			K key;
 			V value;
@@ -277,7 +298,8 @@ public class LruCache<K, V> {
 	}
 
 	/**
-	 * Returns the number of times {@link #get} returned a value.
+	 * Returns the number of times {@link #get} returned a value that was
+	 * already present in the cache.
 	 */
 	public synchronized final int hitCount() {
 		return hitCount;

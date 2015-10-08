@@ -86,15 +86,6 @@ public class HurlStack implements HttpStack {
         mSslSocketFactory = sslSocketFactory;
     }
 
-//	/**
-//	 * @param sslSocketFactory
-//	 *            SSL factory to use for HTTPS connections
-//	 */
-//	public HurlStack(String userAgent, SSLSocketFactory sslSocketFactory) {
-//		mSslSocketFactory = sslSocketFactory;
-//		mUserAgent = userAgent;
-//	}
-
 
 	@Override
 	public HttpResponse performRequest(Request<?> request, Map<String, String> additionalHeaders) throws IOException, AuthFailureError {

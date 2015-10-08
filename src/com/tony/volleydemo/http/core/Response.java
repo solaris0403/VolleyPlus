@@ -24,19 +24,6 @@ import com.tony.volleydemo.http.cache.DiskCache;
  * @param <T> Parsed type of this response
  */
 public class Response<T> {
-	
-	/** Returns a successful response containing the parsed result. */
-	public static <T> Response<T> success(T result, Cache.Entry cacheEntry) {
-		return new Response<T>(result, cacheEntry);
-	}
-    
-    /**
-     * Returns a failed response containing the given error code and an optional
-     * localized message displayed to the user.
-     */
-    public static <T> Response<T> error(VolleyError error) {
-        return new Response<T>(error);
-    }
     
     /** Parsed response, or null in the case of error. */
     public final T result;
@@ -67,5 +54,18 @@ public class Response<T> {
         this.result = null;
         this.cacheEntry = null;
         this.error = error;
+    }
+    
+	/** Returns a successful response containing the parsed result. */
+	public static <T> Response<T> success(T result, Cache.Entry cacheEntry) {
+		return new Response<T>(result, cacheEntry);
+	}
+    
+    /**
+     * Returns a failed response containing the given error code and an optional
+     * localized message displayed to the user.
+     */
+    public static <T> Response<T> error(VolleyError error) {
+        return new Response<T>(error);
     }
 }

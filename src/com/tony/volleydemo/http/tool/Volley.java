@@ -23,6 +23,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.net.http.AndroidHttpClient;
 import android.os.Build;
+import android.os.Environment;
 
 import com.tony.volleydemo.http.cache.DiskCache;
 import com.tony.volleydemo.http.core.Network;
@@ -35,6 +36,25 @@ public class Volley {
 
 	/** Default on-disk cache directory. */
 	private static final String DEFAULT_CACHE_DIR = "volley";
+
+	/**
+	 * Get cache dir
+	 * @Title getDiskCacheDir
+	 * @Description TODO
+	 * @param context
+	 * @param uniqueName
+	 * @return
+	 * @return File
+	 */
+	public static File getDiskCacheDir(Context context, String uniqueName) {
+		String cachePath;
+		if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState()) || !Environment.isExternalStorageRemovable()) {
+			cachePath = context.getExternalCacheDir().getPath();
+		} else {
+			cachePath = context.getCacheDir().getPath();
+		}
+		return new File(cachePath + File.separator + uniqueName);
+	}
 
 	/**
 	 * Creates a default instance of the worker pool and calls
@@ -54,7 +74,7 @@ public class Volley {
 	 * @return A started {@link RequestQueue} instance.
 	 */
 	public static RequestQueue newRequestQueue(Context context, HttpStack stack, int maxDiskCacheBytes, boolean isOpenCache) {
-		File cacheDir = new File(context.getCacheDir(), DEFAULT_CACHE_DIR);
+		//File cacheDir = new File(context.getCacheDir(), DEFAULT_CACHE_DIR);
 		String userAgent = "volley/0";
 		try {
 			String packageName = context.getPackageName();
@@ -77,10 +97,10 @@ public class Volley {
 		if (isOpenCache) {
 			if (maxDiskCacheBytes <= -1) {
 				// No maximum size specified
-				queue = new RequestQueue(new DiskCache(cacheDir), network);
+				queue = new RequestQueue(new DiskCache(getDiskCacheDir(context, DEFAULT_CACHE_DIR)), network);
 			} else {
 				// Disk cache size specified
-				queue = new RequestQueue(new DiskCache(cacheDir, maxDiskCacheBytes), network);
+				queue = new RequestQueue(new DiskCache(getDiskCacheDir(context, DEFAULT_CACHE_DIR), maxDiskCacheBytes), network);
 			}
 		} else {
 			// No use Disk cache, usually on File download
@@ -105,10 +125,10 @@ public class Volley {
 	public static RequestQueue newRequestQueue(Context context, int maxDiskCacheBytes) {
 		return newRequestQueue(context, null, maxDiskCacheBytes, true);
 	}
+
 	/**
 	 * Creates a default instance of the worker pool and calls
-	 * {@link RequestQueue#start()} on it. You may set use or unused
-	 * disk cache.
+	 * {@link RequestQueue#start()} on it. You may set use or unused disk cache.
 	 *
 	 * @param context
 	 *            A {@link Context} to use for creating the cache dir.
